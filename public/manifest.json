@@ -1,0 +1,9 @@
+{
+    "short_name": "SQL Spark",
+    "name": "SQL Spark Hackathon Platform",
+    "icons": [],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#059669",
+    "background_color": "#ffffff"
+}
