@@ -4,6 +4,7 @@
 import { supabase } from './supabaseClient';
 import { logger } from '@/lib/logger';
 import { apiLimiter, registerLimiter } from '@/lib/rateLimit';
+import { isValidEmail } from '@/lib/utils';
 
 function createEntityStore(tableName) {
     const localStorageKey = `sqlspark_${tableName}`;
@@ -166,6 +167,9 @@ function createEntityStore(tableName) {
 // Auth wrapper using Supabase Auth (with Mock Mode fallback)
 const auth = {
     async login({ email, password }) {
+        if (!isValidEmail(email)) {
+            throw { status: 403, message: 'Only @gmail.com and @rgmcet.edu accounts are allowed' };
+        }
         if (window.IS_MOCK_MODE) {
             // Mock admin for local dev only
             if (email === 'admin@sqlspark.com' && password === 'admin123') {
@@ -199,6 +203,9 @@ const auth = {
     },
 
     async register({ email, password, full_name, role = 'user' }) {
+        if (!isValidEmail(email)) {
+            throw { status: 400, message: 'Only @gmail.com and @rgmcet.edu accounts are allowed' };
+        }
         if (!registerLimiter.check(email)) {
              const remaining = registerLimiter.getRemainingTimeSeconds(email);
              logger.warn('abuse', 'Excessive registration attempt blocked', { email, remaining });

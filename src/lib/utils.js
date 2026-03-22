@@ -11,7 +11,7 @@ export function isValidEmail(email) {
     if (!regex.test(email)) return false;
 
     const domain = email.split('@')[1].toLowerCase();
-    return domain === 'gmail.com' || domain === 'rgmcet.edu.in';
+    return domain === 'gmail.com' || domain === 'rgmcet.edu';
 }
 
 export const isIframe = window.self !== window.top;
