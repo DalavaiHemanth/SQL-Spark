@@ -27,10 +27,12 @@ export default function Login({ onLoginSuccess }) {
     const [showResetForm, setShowResetForm] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [isResetVerifying, setIsResetVerifying] = useState(false);
+    const [resetOtpCode, setResetOtpCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [loginError, setLoginError] = useState('');
 
-    // OTP State
+    // OTP State (for registration)
     const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
     const [otpCode, setOtpCode] = useState('');
     const [otpTimer, setOtpTimer] = useState(0);
