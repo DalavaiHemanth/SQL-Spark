@@ -250,26 +250,17 @@ const auth = {
         };
     },
 
-    async sendOtp(email) {
-        // Fallback for local dev if edge function not deployed
+    async sendOtp(email, type = 'register') {
         if (window.IS_MOCK_MODE) {
-            console.log('--- MOCK OTP SENT TO:', email, 'CODE: 123456 ---');
+            console.log(`--- MOCK OTP SENT (${type}) to ${email} ---`);
             return { success: true };
         }
 
-        // Call our new Edge Function
-        // SUPABASE_URL and SUPABASE_ANON_KEY are usually globally available if using vite
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email-otp`;
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({ email })
+        const { data, error } = await supabase.functions.invoke('send-email-otp', {
+            body: { email, type }
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+
+        if (error) throw error;
         return data;
     },
 
@@ -300,6 +291,20 @@ const auth = {
             .eq('id', data.id);
 
         return true;
+    },
+
+    async resetPasswordWithOtp(email, code, newPassword) {
+        if (window.IS_MOCK_MODE) {
+            toast.info('Mock Mode: Password reset to ' + newPassword);
+            return { success: true };
+        }
+
+        const { data, error } = await supabase.functions.invoke('process-password-reset', {
+            body: { email, code, newPassword }
+        });
+
+        if (error) throw error;
+        return data;
     },
 
     async deleteUserPermanently(email) {

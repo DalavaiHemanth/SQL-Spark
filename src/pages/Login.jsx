@@ -42,24 +42,42 @@ export default function Login({ onLoginSuccess }) {
         email: '', password: '', full_name: '', role: 'user'
     });
 
-    const handleResetPassword = async (e) => {
+    const handleResetPasswordRequest = async (e) => {
         e.preventDefault();
         if (!resetEmail) { toast.error('Please enter your email'); return; }
-        if (window.IS_MOCK_MODE) {
-            toast.info('Password reset is not available in mock mode. Use admin@sqlspark.com / admin123');
-            return;
-        }
         setIsLoading(true);
         try {
-            const { supabase } = await import('../api/supabaseClient');
-            const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-                redirectTo: window.location.origin + '/Login'
-            });
-            if (error) throw error;
-            toast.success('Password reset email sent! Check your inbox.');
-            setShowResetForm(false);
+            await db.auth.sendOtp(resetEmail, 'reset');
+            setIsResetVerifying(true);
+            toast.success('Reset code sent to your email!');
         } catch (err) {
-            toast.error(err.message || 'Failed to send reset email');
+            toast.error(err.message || 'Failed to send reset code');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCompletePasswordReset = async (e) => {
+        e.preventDefault();
+        if (resetOtpCode.length !== 6) {
+            toast.error('Please enter the 6-digit code');
+            return;
+        }
+        if (newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await db.auth.resetPasswordWithOtp(resetEmail, resetOtpCode, newPassword);
+            toast.success('Password updated successfully! Please sign in.');
+            setIsResetVerifying(false);
+            setShowResetForm(false);
+            setResetOtpCode('');
+            setNewPassword('');
+        } catch (err) {
+            toast.error(err.message || 'Failed to update password');
         } finally {
             setIsLoading(false);
         }
@@ -315,83 +333,145 @@ export default function Login({ onLoginSuccess }) {
                                 </TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="login">
-
-                                <form onSubmit={handleLogin} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="login-email">Email</Label>
-                                        <Input
-                                            id="login-email"
-                                            type="email"
-                                            placeholder="you@example.com"
-                                            value={loginData.email}
-                                            onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                                            required
-                                            className="h-12"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="login-password">Password</Label>
-                                        <Input
-                                            id="login-password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={loginData.password}
-                                            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                                            required
-                                            className="h-12"
-                                        />
-                                    </div>
-                                    <Button
-                                        type="submit"
-                                        className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
-                                        disabled={isLoading || !!lockoutUntil}
-                                    >
-                                        {isLoading ? (
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        ) : (
-                                            <LogIn className="w-4 h-4 mr-2" />
-                                        )}
-                                        {lockoutUntil ? `Locked (${lockoutRemaining}s)` : 'Sign In'}
-                                    </Button>
-
-                                    {loginError && (
-                                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
-                                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                            </svg>
-                                            {loginError}
+                            <TabsContent value="login" className="space-y-4 pt-4">
+                                {!showResetForm ? (
+                                    <form onSubmit={handleLogin} className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="login-email">Email</Label>
+                                            <Input
+                                                id="login-email"
+                                                type="email"
+                                                placeholder="you@example.com"
+                                                value={loginData.email}
+                                                onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                                                required
+                                                className="h-12"
+                                            />
                                         </div>
-                                    )}
-
-                                    <div className="flex items-center justify-center">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="login-password">Password</Label>
+                                            <Input
+                                                id="login-password"
+                                                type="password"
+                                                placeholder="••••••••"
+                                                value={loginData.password}
+                                                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                                                required
+                                                className="h-12"
+                                            />
+                                        </div>
                                         <Button
-                                            type="button"
-                                            variant="link"
-                                            className="text-sm text-slate-500 hover:text-emerald-600 px-0"
-                                            onClick={() => setShowResetForm(!showResetForm)}
+                                            type="submit"
+                                            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                                            disabled={isLoading || !!lockoutUntil}
                                         >
-                                            Forgot Password?
+                                            {isLoading ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <LogIn className="w-4 h-4 mr-2" />
+                                            )}
+                                            {lockoutUntil ? `Locked (${lockoutRemaining}s)` : 'Sign In'}
                                         </Button>
-                                    </div>
-                                </form>
 
-                                {showResetForm && (
-                                    <form onSubmit={handleResetPassword} className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-                                        <p className="text-sm font-medium text-blue-800">Reset your password</p>
-                                        <Input
-                                            type="email"
-                                            placeholder="Enter your email"
-                                            value={resetEmail}
-                                            onChange={(e) => setResetEmail(e.target.value)}
-                                            required
-                                            className="h-10"
-                                        />
-                                        <Button type="submit" className="w-full h-10 bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
-                                            {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                            Send Reset Link
-                                        </Button>
+                                        {loginError && (
+                                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                                </svg>
+                                                {loginError}
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center justify-center">
+                                            <Button
+                                                type="button"
+                                                variant="link"
+                                                className="text-sm text-slate-500 hover:text-emerald-600 px-0"
+                                                onClick={() => setShowResetForm(true)}
+                                            >
+                                                Forgot Password?
+                                            </Button>
+                                        </div>
                                     </form>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {!isResetVerifying ? (
+                                            <form onSubmit={handleResetPasswordRequest} className="space-y-4">
+                                                <div className="text-center space-y-2 mb-4">
+                                                    <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                                                        <Sparkles size={20} />
+                                                    </div>
+                                                    <h3 className="font-semibold text-slate-900">Forgot Password?</h3>
+                                                    <p className="text-sm text-slate-500">Enter your email to receive a reset code.</p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Email Address</Label>
+                                                    <Input
+                                                        type="email"
+                                                        placeholder="you@example.com"
+                                                        value={resetEmail}
+                                                        onChange={(e) => setResetEmail(e.target.value)}
+                                                        required
+                                                        className="h-12"
+                                                    />
+                                                </div>
+                                                <Button type="submit" className="w-full h-12 bg-slate-900 hover:bg-slate-800" disabled={isLoading}>
+                                                    {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                                    Send Reset Code
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    className="w-full h-10" 
+                                                    onClick={() => setShowResetForm(false)}
+                                                >
+                                                    Back to Login
+                                                </Button>
+                                            </form>
+                                        ) : (
+                                            <form onSubmit={handleCompletePasswordReset} className="space-y-4">
+                                                <div className="text-center space-y-1">
+                                                    <p className="text-sm font-semibold text-slate-900">Verify & Reset</p>
+                                                    <p className="text-xs text-slate-500">Enter the code sent to {resetEmail}</p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs">6-Digit Code</Label>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder="000000"
+                                                        maxLength={6}
+                                                        value={resetOtpCode}
+                                                        onChange={(e) => setResetOtpCode(e.target.value.replace(/\D/g, ''))}
+                                                        className="h-12 text-center font-mono tracking-widest text-lg"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs">New Password</Label>
+                                                    <Input
+                                                        type="password"
+                                                        placeholder="At least 6 characters"
+                                                        value={newPassword}
+                                                        onChange={(e) => setNewPassword(e.target.value)}
+                                                        required
+                                                        className="h-12"
+                                                    />
+                                                </div>
+                                                <Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>
+                                                    {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                                    Update Password
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    className="w-full h-10" 
+                                                    onClick={() => setIsResetVerifying(false)}
+                                                >
+                                                    Change Email
+                                                </Button>
+                                            </form>
+                                        )}
+                                    </div>
                                 )}
                             </TabsContent>
 
