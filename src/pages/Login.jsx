@@ -94,7 +94,12 @@ export default function Login({ onLoginSuccess }) {
     // Detect password reset link from Supabase
     useEffect(() => {
         const hash = window.location.hash;
-        if (hash && (hash.includes('type=recovery') || hash.includes('access_token='))) {
+        const search = window.location.search;
+        const isRecovery = hash.includes('type=recovery') || 
+                          search.includes('type=recovery') || 
+                          hash.includes('access_token=');
+        
+        if (isRecovery) {
             setIsUpdatingPassword(true);
             toast.info('Please set your new password below.');
         }
