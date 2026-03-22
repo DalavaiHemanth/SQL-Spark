@@ -146,8 +146,12 @@ export default function TeamDashboard() {
     const currentRoundCfgEarly = hackathon?.rounds_config?.find(
         r => r.round_number === (hackathon?.current_round || 1)
     );
-    const isRoundCurrentlyActive = !hackathon?.rounds_config || currentRoundCfgEarly?.status === 'active';
-    const antiCheatEnabled = isRoleAllowed && hackathon?.status === 'in_progress' && isRoundCurrentlyActive && !hackathonNotStarted;
+    // Round is active if no config exists OR if Round 1 is upcoming/active (if no config) OR specifically marked 'active'
+    const isRoundCurrentlyActive = !hackathon?.rounds_config || 
+        hackathon.rounds_config.length === 0 || 
+        currentRoundCfgEarly?.status === 'active';
+
+    const antiCheatEnabled = isRoleAllowed && !hackathonNotStarted && isRoundCurrentlyActive && !isTimeUp;
     const antiCheat = useAntiCheat(teamId, antiCheatEnabled);
 
     // Load query history from localStorage
@@ -249,15 +253,8 @@ export default function TeamDashboard() {
 
     // Navigation lock: block browser back button and page unload during active contest
     // Also check that the CURRENT ROUND is 'active' — not 'upcoming' (inter-round gap)
-    const currentRoundCfgForLock = hackathon?.rounds_config?.find(
-        r => r.round_number === (hackathon?.current_round || 1)
-    );
-    const isCurrentRoundActive = !hackathon?.rounds_config || // single-round hackathon has no config
-        currentRoundCfgForLock?.status === 'active';
-    const isContestActive = hackathon?.status === 'in_progress' && !isTimeUp &&
-        !(hackathon?.end_time && new Date(Date.now() + serverTimeOffsetRef.current) >= new Date(hackathon.end_time)) &&
-        !hackathonNotStarted &&
-        isCurrentRoundActive;
+    // Contest is active if anti-cheat is enabled (covers role, not started, round, time)
+    const isContestActive = antiCheatEnabled;
 
     useEffect(() => {
         if (!isContestActive) return;
@@ -863,7 +860,7 @@ export default function TeamDashboard() {
 
     // --- Fullscreen enforcement (must be before any early returns) ---
     useEffect(() => {
-        if (!hackathon || hackathon.status !== 'in_progress' || isTimeUp) return;
+        if (!hackathon || hackathonNotStarted || isTimeUp) return;
 
         const enterFullscreen = async () => {
             try {
