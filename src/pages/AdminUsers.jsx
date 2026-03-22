@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient'; // Direct supabase access for RPC
+import { supabase } from '@/api/supabaseClient'; 
+import { db } from '@/api/dataClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
