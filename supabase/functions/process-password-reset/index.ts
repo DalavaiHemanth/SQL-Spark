@@ -21,40 +21,41 @@ serve(async (req) => {
             throw new Error('Password must be at least 6 characters');
         }
 
-        // Use service role to bypass RLS
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
-        // Step 1: Verify OTP
+        // Step 1: Find the OTP — only check email + code + expiry (not is_verified)
         const { data: otpRecord, error: otpError } = await supabase
             .from('email_otps')
             .select('*')
             .eq('email', email)
             .eq('otp_code', otp_code)
-            .eq('is_verified', false)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
-        if (otpError || !otpRecord) {
-            throw new Error('Invalid or expired verification code');
-        }
+        if (otpError) throw new Error('Database error: ' + otpError.message);
+        if (!otpRecord) throw new Error('Invalid verification code. Please request a new one.');
 
         // Check expiry
         if (new Date() > new Date(otpRecord.expires_at)) {
             throw new Error('Verification code has expired. Please request a new one.');
         }
 
-        // Step 2: Find the user
-        const { data: userList, error: userError } = await supabase.auth.admin.listUsers();
-        if (userError) throw new Error('Failed to look up user');
+        // Step 2: Find user by email using admin list (with high perPage to avoid pagination miss)
+        const { data: userList, error: listError } = await supabase.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000
+        });
 
-        const user = userList.users.find(u => u.email === email);
-        if (!user) throw new Error('No account found with this email address');
+        if (listError) throw new Error('Could not look up account: ' + listError.message);
 
-        // Step 3: Update password via Admin API (reliable, no pgcrypto needed)
+        const user = userList.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        if (!user) throw new Error('No account found with this email address.');
+
+        // Step 3: Update password via Admin API
         const { error: updateError } = await supabase.auth.admin.updateUserById(
             user.id,
             { password: new_password }
@@ -62,11 +63,8 @@ serve(async (req) => {
 
         if (updateError) throw new Error('Failed to update password: ' + updateError.message);
 
-        // Step 4: Mark OTP as verified
-        await supabase
-            .from('email_otps')
-            .update({ is_verified: true })
-            .eq('id', otpRecord.id);
+        // Step 4: Delete the used OTP so it can't be reused
+        await supabase.from('email_otps').delete().eq('id', otpRecord.id);
 
         return new Response(
             JSON.stringify({ success: true, message: 'Password updated successfully' }),
@@ -74,8 +72,9 @@ serve(async (req) => {
         );
 
     } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
         return new Response(
-            JSON.stringify({ error: err.message }),
+            JSON.stringify({ error: message }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
     }
