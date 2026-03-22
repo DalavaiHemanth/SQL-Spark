@@ -95,6 +95,16 @@ export default function Login({ onLoginSuccess }) {
     useEffect(() => {
         const hash = window.location.hash;
         const search = window.location.search;
+        const params = new URLSearchParams(search + hash.replace('#', '?'));
+        
+        const error = params.get('error');
+        const errorDesc = params.get('error_description') || params.get('error_message');
+        
+        if (error) {
+            toast.error(`Auth Error: ${errorDesc || error}`);
+            return;
+        }
+
         const isRecovery = hash.includes('type=recovery') || 
                           search.includes('type=recovery') || 
                           hash.includes('access_token=');
