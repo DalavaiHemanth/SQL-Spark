@@ -302,6 +302,23 @@ const auth = {
         return true;
     },
 
+    async deleteUserPermanently(email) {
+        if (window.IS_MOCK_MODE) {
+            console.log('--- MOCK DELETE USER:', email, '---');
+            const users = JSON.parse(localStorage.getItem('sqlspark_users') || '[]');
+            const filtered = users.filter(u => u.email !== email);
+            localStorage.setItem('sqlspark_users', JSON.stringify(filtered));
+            return { success: true };
+        }
+
+        const { error } = await supabase.rpc('delete_user_by_email', {
+            target_email: email
+        });
+
+        if (error) throw error;
+        return { success: true };
+    },
+
     async me() {
         if (window.IS_MOCK_MODE) {
             // Check for mock session first (allows mock admin to stay logged in)

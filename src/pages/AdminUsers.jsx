@@ -23,13 +23,25 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, MoreHorizontal, Shield, ArrowLeft, UserCog } from 'lucide-react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, MoreHorizontal, Shield, ArrowLeft, UserCog, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminUsers() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const [userToDelete, setUserToDelete] = React.useState(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
     // Redirect non-admins
     React.useEffect(() => {
@@ -64,6 +76,20 @@ export default function AdminUsers() {
         },
         onError: (err) => {
             toast.error(`Failed to update role: ${err.message}`);
+        }
+    });
+
+    // Delete user mutation
+    const deleteUserMutation = useMutation({
+        mutationFn: (email) => db.auth.deleteUserPermanently(email),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['admin-users']);
+            toast.success('User deleted permanently');
+            setIsDeleteDialogOpen(false);
+            setUserToDelete(null);
+        },
+        onError: (err) => {
+            toast.error(`Failed to delete user: ${err.message}`);
         }
     });
 
@@ -183,6 +209,17 @@ export default function AdminUsers() {
                                                         <Shield className="w-3 h-3 mr-2" />
                                                         Make Admin
                                                     </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                                                        onClick={() => {
+                                                            setUserToDelete(u.email);
+                                                            setIsDeleteDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="w-3 h-3 mr-2" />
+                                                        Delete User
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>
@@ -192,6 +229,29 @@ export default function AdminUsers() {
                         </Table>
                     </CardContent>
                 </Card>
+
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete <strong>{userToDelete}</strong> and remove them from all teams. 
+                                This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() => deleteUserMutation.mutate(userToDelete)}
+                                className="bg-red-600 hover:bg-red-700"
+                                disabled={deleteUserMutation.isPending}
+                            >
+                                {deleteUserMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                Delete Permanently
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     );
