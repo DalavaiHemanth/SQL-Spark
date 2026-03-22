@@ -26,6 +26,8 @@ export default function Login({ onLoginSuccess }) {
     const [isLoading, setIsLoading] = useState(false);
     const [showResetForm, setShowResetForm] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
     const [loginError, setLoginError] = useState('');
 
     // OTP State
@@ -63,12 +65,40 @@ export default function Login({ onLoginSuccess }) {
         }
     };
 
+    const handleUpdatePassword = async (e) => {
+        e.preventDefault();
+        if (newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await db.auth.updatePassword(newPassword);
+            toast.success('Password updated successfully! You can now sign in.');
+            setIsUpdatingPassword(false);
+            window.location.hash = ''; // Clear the access token from URL
+        } catch (err) {
+            toast.error(err.message || 'Failed to update password');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Redirect if already logged in (and not in modal mode)
     React.useEffect(() => {
         if (user && !onLoginSuccess) {
             navigate('/Dashboard');
         }
     }, [user, onLoginSuccess, navigate]);
+
+    // Detect password reset link from Supabase
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (hash && (hash.includes('type=recovery') || hash.includes('access_token='))) {
+            setIsUpdatingPassword(true);
+            toast.info('Please set your new password below.');
+        }
+    }, []);
 
     // Handle lockout timer
     const [lockoutRemaining, setLockoutRemaining] = useState(0);
@@ -219,7 +249,46 @@ export default function Login({ onLoginSuccess }) {
 
                 <Card className="border-0 shadow-xl">
                     <CardContent className="pt-6">
-                        <Tabs defaultValue="login" className="w-full">
+                        {isUpdatingPassword ? (
+                            <form onSubmit={handleUpdatePassword} className="space-y-4 py-4">
+                                <div className="text-center space-y-2 mb-6">
+                                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Sparkles size={24} />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-slate-900">Set New Password</h3>
+                                    <p className="text-sm text-slate-500">Please enter a strong new password</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="new-password">New Password</Label>
+                                    <Input
+                                        id="new-password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        required
+                                        className="h-12"
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                    Update Password & Sign In
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="w-full"
+                                    onClick={() => setIsUpdatingPassword(false)}
+                                >
+                                    Cancel
+                                </Button>
+                            </form>
+                        ) : (
+                            <Tabs defaultValue="login" className="w-full">
                             <TabsList className="grid w-full grid-cols-2 mb-6">
                                 <TabsTrigger value="login">
                                     <LogIn className="w-4 h-4 mr-2" />
@@ -439,6 +508,7 @@ export default function Login({ onLoginSuccess }) {
                                 )}
                             </TabsContent>
                         </Tabs>
+                        )}
                     </CardContent>
                 </Card>
             </div>

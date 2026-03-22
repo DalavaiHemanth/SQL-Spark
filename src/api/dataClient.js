@@ -319,6 +319,18 @@ const auth = {
         return { success: true };
     },
 
+    async updatePassword(newPassword) {
+        if (window.IS_MOCK_MODE) {
+            toast.info('Mock Mode: Password updated to ' + newPassword);
+            return { success: true };
+        }
+        const { error } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+        if (error) throw error;
+        return { success: true };
+    },
+
     async me() {
         if (window.IS_MOCK_MODE) {
             // Check for mock session first (allows mock admin to stay logged in)
