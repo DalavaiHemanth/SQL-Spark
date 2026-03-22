@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import {
     LogIn,
     UserPlus,
     Loader2,
-    Sparkles
+    Sparkles,
+    Mail
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +27,12 @@ export default function Login({ onLoginSuccess }) {
     const [showResetForm, setShowResetForm] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [loginError, setLoginError] = useState('');
+
+    // OTP State
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [otpCode, setOtpCode] = useState('');
+    const [otpTimer, setOtpTimer] = useState(0);
+    const [isResending, setIsResending] = useState(false);
     const [failedAttempts, setFailedAttempts] = useState(0);
     const [lockoutUntil, setLockoutUntil] = useState(null);
     const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -84,7 +91,7 @@ export default function Login({ onLoginSuccess }) {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        
+
         if (!isValidEmail(loginData.email)) {
             toast.error('Only @gmail.com and @rgmcet.edu accounts are allowed');
             return;
@@ -110,7 +117,7 @@ export default function Login({ onLoginSuccess }) {
         } catch (err) {
             const msg = err.message || 'Invalid email or password';
             setLoginError(msg);
-            
+
             const remaining = loginLimiter.getRemainingTimeSeconds(loginData.email);
             if (remaining > 0) {
                 setLockoutUntil(Date.now() + remaining * 1000);
@@ -134,23 +141,64 @@ export default function Login({ onLoginSuccess }) {
 
         setIsLoading(true);
         try {
-            await db.auth.register(registerData);
-            toast.success('Account created!');
-            if (onLoginSuccess) onLoginSuccess();
-            else window.location.reload();
+            await db.auth.sendOtp(registerData.email);
+            setIsVerifyingOtp(true);
+            setOtpTimer(60);
+            toast.success('Verification code sent to your email!');
         } catch (err) {
-            console.error('Registration error:', err);
-            if (err.status === 201) {
-                toast.success(err.message, { duration: 10000 });
-                // Switch back to login view or clear fields (optional)
-                setRegisterData({ ...registerData, password: '' }); 
-            } else {
-                toast.error(err.message || 'Registration failed');
-            }
+            console.error('OTP Send error:', err);
+            toast.error(err.message || 'Failed to send verification code');
         } finally {
             setIsLoading(false);
         }
     };
+
+    const handleVerifyAndRegister = async (e) => {
+        e.preventDefault();
+        if (otpCode.length !== 6) {
+            toast.error('Please enter the 6-digit code');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // 1. Verify OTP
+            await db.auth.verifyOtp(registerData.email, otpCode);
+            
+            // 2. Perform actual registration now that email is verified
+            await db.auth.register(registerData);
+            
+            toast.success('Registration successful!');
+            if (onLoginSuccess) onLoginSuccess();
+            else window.location.reload();
+        } catch (err) {
+            console.error('Verification/Registration error:', err);
+            toast.error(err.message || 'Verification failed');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        setIsResending(true);
+        try {
+            await db.auth.sendOtp(registerData.email);
+            setOtpTimer(60);
+            toast.success('New code sent!');
+        } catch (err) {
+            toast.error('Failed to resend code');
+        } finally {
+            setIsResending(false);
+        }
+    };
+
+    // Timer effect
+    useEffect(() => {
+        if (otpTimer > 0) {
+            const timer = setTimeout(() => setOtpTimer(otpTimer - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [otpTimer]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 flex items-center justify-center p-6">
@@ -264,67 +312,131 @@ export default function Login({ onLoginSuccess }) {
                             </TabsContent>
 
                             <TabsContent value="register">
-                                <form onSubmit={handleRegister} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reg-name">Full Name</Label>
-                                        <Input
-                                            id="reg-name"
-                                            placeholder="John Doe"
-                                            value={registerData.full_name}
-                                            onChange={(e) => setRegisterData({ ...registerData, full_name: e.target.value })}
-                                            required
-                                            className="h-12"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reg-email">Email</Label>
-                                        <Input
-                                            id="reg-email"
-                                            type="email"
-                                            placeholder="you@example.com"
-                                            value={registerData.email}
-                                            onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                                            required
-                                            className="h-12"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reg-password">Password</Label>
-                                        <Input
-                                            id="reg-password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={registerData.password}
-                                            onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                                            required
-                                            className="h-12"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2 py-4">
-                                        <input
-                                            type="checkbox"
-                                            id="role-checkbox"
-                                            className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer"
-                                            checked={registerData.role === 'organizer'}
-                                            onChange={(e) => setRegisterData({ ...registerData, role: e.target.checked ? 'organizer' : 'user' })}
-                                        />
-                                        <Label htmlFor="role-checkbox" className="font-normal text-slate-700 cursor-pointer select-none">
-                                            I want to <strong>Host Hackathons</strong>
-                                        </Label>
-                                    </div>
-                                    <Button
-                                        type="submit"
-                                        className="w-full h-12 bg-slate-900 hover:bg-slate-800"
-                                        disabled={isLoading}
-                                    >
-                                        {isLoading ? (
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        ) : (
-                                            <UserPlus className="w-4 h-4 mr-2" />
-                                        )}
-                                        Create Account
-                                    </Button>
-                                </form>
+                                {!isVerifyingOtp ? (
+                                    <form onSubmit={handleRegister} className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reg-name">Full Name</Label>
+                                            <Input
+                                                id="reg-name"
+                                                placeholder="John Doe"
+                                                value={registerData.full_name}
+                                                onChange={(e) => setRegisterData({ ...registerData, full_name: e.target.value })}
+                                                required
+                                                className="h-12"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reg-email">Email</Label>
+                                            <Input
+                                                id="reg-email"
+                                                type="email"
+                                                placeholder="you@example.com"
+                                                value={registerData.email}
+                                                onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                                                required
+                                                className="h-12"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reg-password">Password</Label>
+                                            <Input
+                                                id="reg-password"
+                                                type="password"
+                                                placeholder="••••••••"
+                                                value={registerData.password}
+                                                onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                                                required
+                                                className="h-12"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2 py-4">
+                                            <input
+                                                type="checkbox"
+                                                id="role-checkbox"
+                                                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer"
+                                                checked={registerData.role === 'organizer'}
+                                                onChange={(e) => setRegisterData({ ...registerData, role: e.target.checked ? 'organizer' : 'user' })}
+                                            />
+                                            <Label htmlFor="role-checkbox" className="font-normal text-slate-700 cursor-pointer select-none">
+                                                I want to <strong>Host Hackathons</strong>
+                                            </Label>
+                                        </div>
+                                        <Button
+                                            type="submit"
+                                            className="w-full h-12 bg-slate-900 hover:bg-slate-800"
+                                            disabled={isLoading}
+                                        >
+                                            {isLoading ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <UserPlus className="w-4 h-4 mr-2" />
+                                            )}
+                                            Get Verification Code
+                                        </Button>
+                                    </form>
+                                ) : (
+                                    <form onSubmit={handleVerifyAndRegister} className="space-y-6 py-4">
+                                        <div className="text-center space-y-2">
+                                            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <Mail size={24} />
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-slate-900">Verify your email</h3>
+                                            <p className="text-sm text-slate-500">
+                                                We've sent a 6-digit code to <br />
+                                                <span className="font-medium text-slate-900">{registerData.email}</span>
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Input
+                                                type="text"
+                                                placeholder="000000"
+                                                maxLength={6}
+                                                value={otpCode}
+                                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                                                className="h-14 text-center text-2xl tracking-[0.5em] font-mono border-2 border-emerald-100 focus:border-emerald-500"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <Button
+                                                type="submit"
+                                                className="w-full h-12 bg-emerald-600 hover:bg-emerald-700"
+                                                disabled={isLoading || otpCode.length !== 6}
+                                            >
+                                                {isLoading ? (
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : null}
+                                                Verify & Create Account
+                                            </Button>
+                                            
+                                            <div className="text-center">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleResendOtp}
+                                                    disabled={otpTimer > 0 || isResending}
+                                                    className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                                >
+                                                    {otpTimer > 0 
+                                                        ? `Resend code in ${otpTimer}s` 
+                                                        : isResending ? 'Sending...' : 'Resend Code'}
+                                                </Button>
+                                            </div>
+
+                                            <Button
+                                                type="button"
+                                                variant="link"
+                                                className="w-full text-xs text-slate-400"
+                                                onClick={() => setIsVerifyingOtp(false)}
+                                            >
+                                                Wrong email? Go back
+                                            </Button>
+                                        </div>
+                                    </form>
+                                )}
                             </TabsContent>
                         </Tabs>
                     </CardContent>

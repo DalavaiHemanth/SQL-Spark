@@ -250,6 +250,58 @@ const auth = {
         };
     },
 
+    async sendOtp(email) {
+        // Fallback for local dev if edge function not deployed
+        if (window.IS_MOCK_MODE) {
+            console.log('--- MOCK OTP SENT TO:', email, 'CODE: 123456 ---');
+            return { success: true };
+        }
+
+        // Call our new Edge Function
+        // SUPABASE_URL and SUPABASE_ANON_KEY are usually globally available if using vite
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email-otp`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+        return data;
+    },
+
+    async verifyOtp(email, code) {
+        if (window.IS_MOCK_MODE) {
+            if (code === '123456') return true;
+            throw new Error('Invalid OTP');
+        }
+
+        const { data, error } = await supabase
+            .from('email_otps')
+            .select('*')
+            .eq('email', email)
+            .eq('otp_code', code)
+            .eq('is_verified', false)
+            .single();
+
+        if (error || !data) throw new Error('Invalid or expired verification code');
+
+        const now = new Date();
+        const expiresAt = new Date(data.expires_at);
+        if (now > expiresAt) throw new Error('Verification code has expired');
+
+        // Mark as verified but keep record briefly for auditing
+        await supabase
+            .from('email_otps')
+            .update({ is_verified: true })
+            .eq('id', data.id);
+
+        return true;
+    },
+
     async me() {
         if (window.IS_MOCK_MODE) {
             // Check for mock session first (allows mock admin to stay logged in)
