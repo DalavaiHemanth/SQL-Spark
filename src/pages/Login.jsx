@@ -27,12 +27,13 @@ export default function Login({ onLoginSuccess }) {
     const [showResetForm, setShowResetForm] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-    const [isResetVerifying, setIsResetVerifying] = useState(false);
-    const [resetOtpCode, setResetOtpCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [loginError, setLoginError] = useState('');
+    
+    const [isResetVerifying, setIsResetVerifying] = useState(false);
+    const [resetOtpCode, setResetOtpCode] = useState('');
 
-    // OTP State (for registration)
+    // OTP State
     const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
     const [otpCode, setOtpCode] = useState('');
     const [otpTimer, setOtpTimer] = useState(0);
@@ -85,55 +86,12 @@ export default function Login({ onLoginSuccess }) {
         }
     };
 
-    const handleUpdatePassword = async (e) => {
-        e.preventDefault();
-        if (newPassword.length < 6) {
-            toast.error('Password must be at least 6 characters');
-            return;
-        }
-        setIsLoading(true);
-        try {
-            await db.auth.updatePassword(newPassword);
-            toast.success('Password updated successfully! You can now sign in.');
-            setIsUpdatingPassword(false);
-            window.location.hash = ''; // Clear the access token from URL
-        } catch (err) {
-            toast.error(err.message || 'Failed to update password');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     // Redirect if already logged in (and not in modal mode)
     React.useEffect(() => {
         if (user && !onLoginSuccess) {
             navigate('/Dashboard');
         }
     }, [user, onLoginSuccess, navigate]);
-
-    // Detect password reset link from Supabase
-    useEffect(() => {
-        const hash = window.location.hash;
-        const search = window.location.search;
-        const params = new URLSearchParams(search + hash.replace('#', '?'));
-        
-        const error = params.get('error');
-        const errorDesc = params.get('error_description') || params.get('error_message');
-        
-        if (error) {
-            toast.error(`Auth Error: ${errorDesc || error}`);
-            return;
-        }
-
-        const isRecovery = hash.includes('type=recovery') || 
-                          search.includes('type=recovery') || 
-                          hash.includes('access_token=');
-        
-        if (isRecovery) {
-            setIsUpdatingPassword(true);
-            toast.info('Please set your new password below.');
-        }
-    }, []);
 
     // Handle lockout timer
     const [lockoutRemaining, setLockoutRemaining] = useState(0);
@@ -229,10 +187,10 @@ export default function Login({ onLoginSuccess }) {
         try {
             // 1. Verify OTP
             await db.auth.verifyOtp(registerData.email, otpCode);
-            
+
             // 2. Perform actual registration now that email is verified
             await db.auth.register(registerData);
-            
+
             toast.success('Registration successful!');
             if (onLoginSuccess) onLoginSuccess();
             else window.location.reload();
@@ -324,287 +282,287 @@ export default function Login({ onLoginSuccess }) {
                             </form>
                         ) : (
                             <Tabs defaultValue="login" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 mb-6">
-                                <TabsTrigger value="login">
-                                    <LogIn className="w-4 h-4 mr-2" />
-                                    Sign In
-                                </TabsTrigger>
-                                <TabsTrigger value="register">
-                                    <UserPlus className="w-4 h-4 mr-2" />
-                                    Register
-                                </TabsTrigger>
-                            </TabsList>
+                                <TabsList className="grid w-full grid-cols-2 mb-6">
+                                    <TabsTrigger value="login">
+                                        <LogIn className="w-4 h-4 mr-2" />
+                                        Sign In
+                                    </TabsTrigger>
+                                    <TabsTrigger value="register">
+                                        <UserPlus className="w-4 h-4 mr-2" />
+                                        Register
+                                    </TabsTrigger>
+                                </TabsList>
 
-                            <TabsContent value="login" className="space-y-4 pt-4">
-                                {!showResetForm ? (
-                                    <form onSubmit={handleLogin} className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="login-email">Email</Label>
-                                            <Input
-                                                id="login-email"
-                                                type="email"
-                                                placeholder="you@example.com"
-                                                value={loginData.email}
-                                                onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                                                required
-                                                className="h-12"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="login-password">Password</Label>
-                                            <Input
-                                                id="login-password"
-                                                type="password"
-                                                placeholder="••••••••"
-                                                value={loginData.password}
-                                                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                                                required
-                                                className="h-12"
-                                            />
-                                        </div>
-                                        <Button
-                                            type="submit"
-                                            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
-                                            disabled={isLoading || !!lockoutUntil}
-                                        >
-                                            {isLoading ? (
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            ) : (
-                                                <LogIn className="w-4 h-4 mr-2" />
-                                            )}
-                                            {lockoutUntil ? `Locked (${lockoutRemaining}s)` : 'Sign In'}
-                                        </Button>
-
-                                        {loginError && (
-                                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
-                                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                                </svg>
-                                                {loginError}
+                                <TabsContent value="login" className="space-y-4 pt-4">
+                                    {!showResetForm ? (
+                                        <form onSubmit={handleLogin} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="login-email">Email</Label>
+                                                <Input
+                                                    id="login-email"
+                                                    type="email"
+                                                    placeholder="you@example.com"
+                                                    value={loginData.email}
+                                                    onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                                                    required
+                                                    className="h-12"
+                                                />
                                             </div>
-                                        )}
-
-                                        <div className="flex items-center justify-center">
-                                            <Button
-                                                type="button"
-                                                variant="link"
-                                                className="text-sm text-slate-500 hover:text-emerald-600 px-0"
-                                                onClick={() => setShowResetForm(true)}
-                                            >
-                                                Forgot Password?
-                                            </Button>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {!isResetVerifying ? (
-                                            <form onSubmit={handleResetPasswordRequest} className="space-y-4">
-                                                <div className="text-center space-y-2 mb-4">
-                                                    <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                                                        <Sparkles size={20} />
-                                                    </div>
-                                                    <h3 className="font-semibold text-slate-900">Forgot Password?</h3>
-                                                    <p className="text-sm text-slate-500">Enter your email to receive a reset code.</p>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Email Address</Label>
-                                                    <Input
-                                                        type="email"
-                                                        placeholder="you@example.com"
-                                                        value={resetEmail}
-                                                        onChange={(e) => setResetEmail(e.target.value)}
-                                                        required
-                                                        className="h-12"
-                                                    />
-                                                </div>
-                                                <Button type="submit" className="w-full h-12 bg-slate-900 hover:bg-slate-800" disabled={isLoading}>
-                                                    {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                                    Send Reset Code
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    variant="ghost" 
-                                                    className="w-full h-10" 
-                                                    onClick={() => setShowResetForm(false)}
-                                                >
-                                                    Back to Login
-                                                </Button>
-                                            </form>
-                                        ) : (
-                                            <form onSubmit={handleCompletePasswordReset} className="space-y-4">
-                                                <div className="text-center space-y-1">
-                                                    <p className="text-sm font-semibold text-slate-900">Verify & Reset</p>
-                                                    <p className="text-xs text-slate-500">Enter the code sent to {resetEmail}</p>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs">6-Digit Code</Label>
-                                                    <Input
-                                                        type="text"
-                                                        placeholder="000000"
-                                                        maxLength={6}
-                                                        value={resetOtpCode}
-                                                        onChange={(e) => setResetOtpCode(e.target.value.replace(/\D/g, ''))}
-                                                        className="h-12 text-center font-mono tracking-widest text-lg"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs">New Password</Label>
-                                                    <Input
-                                                        type="password"
-                                                        placeholder="At least 6 characters"
-                                                        value={newPassword}
-                                                        onChange={(e) => setNewPassword(e.target.value)}
-                                                        required
-                                                        className="h-12"
-                                                    />
-                                                </div>
-                                                <Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>
-                                                    {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                                    Update Password
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    variant="ghost" 
-                                                    className="w-full h-10" 
-                                                    onClick={() => setIsResetVerifying(false)}
-                                                >
-                                                    Change Email
-                                                </Button>
-                                            </form>
-                                        )}
-                                    </div>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="register">
-                                {!isVerifyingOtp ? (
-                                    <form onSubmit={handleRegister} className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="reg-name">Full Name</Label>
-                                            <Input
-                                                id="reg-name"
-                                                placeholder="John Doe"
-                                                value={registerData.full_name}
-                                                onChange={(e) => setRegisterData({ ...registerData, full_name: e.target.value })}
-                                                required
-                                                className="h-12"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="reg-email">Email</Label>
-                                            <Input
-                                                id="reg-email"
-                                                type="email"
-                                                placeholder="you@example.com"
-                                                value={registerData.email}
-                                                onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                                                required
-                                                className="h-12"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="reg-password">Password</Label>
-                                            <Input
-                                                id="reg-password"
-                                                type="password"
-                                                placeholder="••••••••"
-                                                value={registerData.password}
-                                                onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                                                required
-                                                className="h-12"
-                                            />
-                                        </div>
-                                        <div className="flex items-center gap-2 py-4">
-                                            <input
-                                                type="checkbox"
-                                                id="role-checkbox"
-                                                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer"
-                                                checked={registerData.role === 'organizer'}
-                                                onChange={(e) => setRegisterData({ ...registerData, role: e.target.checked ? 'organizer' : 'user' })}
-                                            />
-                                            <Label htmlFor="role-checkbox" className="font-normal text-slate-700 cursor-pointer select-none">
-                                                I want to <strong>Host Hackathons</strong>
-                                            </Label>
-                                        </div>
-                                        <Button
-                                            type="submit"
-                                            className="w-full h-12 bg-slate-900 hover:bg-slate-800"
-                                            disabled={isLoading}
-                                        >
-                                            {isLoading ? (
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            ) : (
-                                                <UserPlus className="w-4 h-4 mr-2" />
-                                            )}
-                                            Get Verification Code
-                                        </Button>
-                                    </form>
-                                ) : (
-                                    <form onSubmit={handleVerifyAndRegister} className="space-y-6 py-4">
-                                        <div className="text-center space-y-2">
-                                            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <Mail size={24} />
+                                            <div className="space-y-2">
+                                                <Label htmlFor="login-password">Password</Label>
+                                                <Input
+                                                    id="login-password"
+                                                    type="password"
+                                                    placeholder="••••••••"
+                                                    value={loginData.password}
+                                                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                                                    required
+                                                    className="h-12"
+                                                />
                                             </div>
-                                            <h3 className="text-lg font-semibold text-slate-900">Verify your email</h3>
-                                            <p className="text-sm text-slate-500">
-                                                We've sent a 6-digit code to <br />
-                                                <span className="font-medium text-slate-900">{registerData.email}</span>
-                                            </p>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Input
-                                                type="text"
-                                                placeholder="000000"
-                                                maxLength={6}
-                                                value={otpCode}
-                                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                                                className="h-14 text-center text-2xl tracking-[0.5em] font-mono border-2 border-emerald-100 focus:border-emerald-500"
-                                                required
-                                            />
-                                        </div>
-
-                                        <div className="space-y-3">
                                             <Button
                                                 type="submit"
-                                                className="w-full h-12 bg-emerald-600 hover:bg-emerald-700"
-                                                disabled={isLoading || otpCode.length !== 6}
+                                                className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                                                disabled={isLoading || !!lockoutUntil}
                                             >
                                                 {isLoading ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                ) : null}
-                                                Verify & Create Account
+                                                ) : (
+                                                    <LogIn className="w-4 h-4 mr-2" />
+                                                )}
+                                                {lockoutUntil ? `Locked (${lockoutRemaining}s)` : 'Sign In'}
                                             </Button>
-                                            
-                                            <div className="text-center">
+
+                                            {loginError && (
+                                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                                                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                                    </svg>
+                                                    {loginError}
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center justify-center">
                                                 <Button
                                                     type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={handleResendOtp}
-                                                    disabled={otpTimer > 0 || isResending}
-                                                    className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                                    variant="link"
+                                                    className="text-sm text-slate-500 hover:text-emerald-600 px-0"
+                                                    onClick={() => setShowResetForm(true)}
                                                 >
-                                                    {otpTimer > 0 
-                                                        ? `Resend code in ${otpTimer}s` 
-                                                        : isResending ? 'Sending...' : 'Resend Code'}
+                                                    Forgot Password?
                                                 </Button>
                                             </div>
-
-                                            <Button
-                                                type="button"
-                                                variant="link"
-                                                className="w-full text-xs text-slate-400"
-                                                onClick={() => setIsVerifyingOtp(false)}
-                                            >
-                                                Wrong email? Go back
-                                            </Button>
+                                        </form>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {!isResetVerifying ? (
+                                                <form onSubmit={handleResetPasswordRequest} className="space-y-4">
+                                                    <div className="text-center space-y-2 mb-4">
+                                                        <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                                                            <Sparkles size={20} />
+                                                        </div>
+                                                        <h3 className="font-semibold text-slate-900">Forgot Password?</h3>
+                                                        <p className="text-sm text-slate-500">Enter your email to receive a reset code.</p>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Email Address</Label>
+                                                        <Input
+                                                            type="email"
+                                                            placeholder="you@example.com"
+                                                            value={resetEmail}
+                                                            onChange={(e) => setResetEmail(e.target.value)}
+                                                            required
+                                                            className="h-12"
+                                                        />
+                                                    </div>
+                                                    <Button type="submit" className="w-full h-12 bg-slate-900 hover:bg-slate-800" disabled={isLoading}>
+                                                        {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                                        Send Reset Code
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        className="w-full h-10"
+                                                        onClick={() => setShowResetForm(false)}
+                                                    >
+                                                        Back to Login
+                                                    </Button>
+                                                </form>
+                                            ) : (
+                                                <form onSubmit={handleCompletePasswordReset} className="space-y-4">
+                                                    <div className="text-center space-y-1">
+                                                        <p className="text-sm font-semibold text-slate-900">Verify & Reset</p>
+                                                        <p className="text-xs text-slate-500">Enter the code sent to {resetEmail}</p>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs">6-Digit Code</Label>
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="000000"
+                                                            maxLength={6}
+                                                            value={resetOtpCode}
+                                                            onChange={(e) => setResetOtpCode(e.target.value.replace(/\D/g, ''))}
+                                                            className="h-12 text-center font-mono tracking-widest text-lg"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs">New Password</Label>
+                                                        <Input
+                                                            type="password"
+                                                            placeholder="At least 6 characters"
+                                                            value={newPassword}
+                                                            onChange={(e) => setNewPassword(e.target.value)}
+                                                            required
+                                                            className="h-12"
+                                                        />
+                                                    </div>
+                                                    <Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>
+                                                        {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                                        Update Password
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        className="w-full h-10"
+                                                        onClick={() => setIsResetVerifying(false)}
+                                                    >
+                                                        Change Email
+                                                    </Button>
+                                                </form>
+                                            )}
                                         </div>
-                                    </form>
-                                )}
-                            </TabsContent>
-                        </Tabs>
+                                    )}
+                                </TabsContent>
+
+                                <TabsContent value="register">
+                                    {!isVerifyingOtp ? (
+                                        <form onSubmit={handleRegister} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="reg-name">Full Name</Label>
+                                                <Input
+                                                    id="reg-name"
+                                                    placeholder="John Doe"
+                                                    value={registerData.full_name}
+                                                    onChange={(e) => setRegisterData({ ...registerData, full_name: e.target.value })}
+                                                    required
+                                                    className="h-12"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="reg-email">Email</Label>
+                                                <Input
+                                                    id="reg-email"
+                                                    type="email"
+                                                    placeholder="you@example.com"
+                                                    value={registerData.email}
+                                                    onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                                                    required
+                                                    className="h-12"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="reg-password">Password</Label>
+                                                <Input
+                                                    id="reg-password"
+                                                    type="password"
+                                                    placeholder="••••••••"
+                                                    value={registerData.password}
+                                                    onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                                                    required
+                                                    className="h-12"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2 py-4">
+                                                <input
+                                                    type="checkbox"
+                                                    id="role-checkbox"
+                                                    className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer"
+                                                    checked={registerData.role === 'organizer'}
+                                                    onChange={(e) => setRegisterData({ ...registerData, role: e.target.checked ? 'organizer' : 'user' })}
+                                                />
+                                                <Label htmlFor="role-checkbox" className="font-normal text-slate-700 cursor-pointer select-none">
+                                                    I want to <strong>Host Hackathons</strong>
+                                                </Label>
+                                            </div>
+                                            <Button
+                                                type="submit"
+                                                className="w-full h-12 bg-slate-900 hover:bg-slate-800"
+                                                disabled={isLoading}
+                                            >
+                                                {isLoading ? (
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                    <UserPlus className="w-4 h-4 mr-2" />
+                                                )}
+                                                Get Verification Code
+                                            </Button>
+                                        </form>
+                                    ) : (
+                                        <form onSubmit={handleVerifyAndRegister} className="space-y-6 py-4">
+                                            <div className="text-center space-y-2">
+                                                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <Mail size={24} />
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-slate-900">Verify your email</h3>
+                                                <p className="text-sm text-slate-500">
+                                                    We've sent a 6-digit code to <br />
+                                                    <span className="font-medium text-slate-900">{registerData.email}</span>
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Input
+                                                    type="text"
+                                                    placeholder="000000"
+                                                    maxLength={6}
+                                                    value={otpCode}
+                                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                                                    className="h-14 text-center text-2xl tracking-[0.5em] font-mono border-2 border-emerald-100 focus:border-emerald-500"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <Button
+                                                    type="submit"
+                                                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700"
+                                                    disabled={isLoading || otpCode.length !== 6}
+                                                >
+                                                    {isLoading ? (
+                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    ) : null}
+                                                    Verify & Create Account
+                                                </Button>
+
+                                                <div className="text-center">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={handleResendOtp}
+                                                        disabled={otpTimer > 0 || isResending}
+                                                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                                    >
+                                                        {otpTimer > 0
+                                                            ? `Resend code in ${otpTimer}s`
+                                                            : isResending ? 'Sending...' : 'Resend Code'}
+                                                    </Button>
+                                                </div>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="link"
+                                                    className="w-full text-xs text-slate-400"
+                                                    onClick={() => setIsVerifyingOtp(false)}
+                                                >
+                                                    Wrong email? Go back
+                                                </Button>
+                                            </div>
+                                        </form>
+                                    )}
+                                </TabsContent>
+                            </Tabs>
                         )}
                     </CardContent>
                 </Card>

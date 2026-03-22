@@ -950,6 +950,42 @@ export default function TeamDashboard() {
         );
     }
 
+    // Mobile device gate — hackathon participation requires a desktop browser
+    const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+    if (isMobileDevice) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6">
+                <div className="max-w-sm w-full text-center">
+                    <div className="flex justify-center mb-8">
+                        <div className="w-24 h-24 rounded-full bg-red-500/20 flex items-center justify-center">
+                            <span className="text-5xl">📵</span>
+                        </div>
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-3">Desktop Required</h1>
+                    <p className="text-slate-400 text-base mb-6">
+                        Hackathon participation is only available on a <strong className="text-white">desktop or laptop</strong> browser. Mobile devices are not supported for the contest.
+                    </p>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-8 text-left space-y-2">
+                        <p className="text-sm font-semibold text-slate-300">Your team details:</p>
+                        <p className="text-emerald-400 font-bold">{team.name}</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">Join Code:</span>
+                            <code className="text-emerald-400 font-mono font-bold">{team.join_code}</code>
+                        </div>
+                    </div>
+                    <Button
+                        className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+                        onClick={() => navigate(createPageUrl('Dashboard'))}
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Dashboard
+                    </Button>
+                    <p className="text-slate-500 text-xs mt-4">You can still browse the dashboard and view results on mobile.</p>
+                </div>
+            </div>
+        );
+    }
+
     // Waiting Room gate — blocked if not in_progress or completed
     if (hackathonNotStarted && hackathon) {
         const isRegistrationOpen = hackathon.status === 'registration_open';

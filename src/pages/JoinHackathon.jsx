@@ -46,7 +46,8 @@ export default function JoinHackathon() {
     const { data: teams = [] } = useQuery({
         queryKey: ['teams', hackathonId],
         queryFn: () => db.entities.Team.filter({ hackathon_id: hackathonId }),
-        enabled: !!hackathonId
+        enabled: !!hackathonId,
+        refetchInterval: 5000  // Refresh every 5s so newly-created teams appear immediately
     });
 
     // Fetch challenges to show per-round counts
@@ -103,7 +104,7 @@ export default function JoinHackathon() {
             if (getEffectiveHackathonStatus(hackathon) !== 'registration_open') {
                 throw new Error('Registration is not open for this hackathon');
             }
-            const team = teams.find(t => t.join_code?.toUpperCase() === joinCode.toUpperCase());
+            const team = teams.find(t => t.join_code?.toUpperCase().trim() === joinCode.toUpperCase().trim());
             if (!team) throw new Error('Invalid join code');
 
             const updatedMembers = [...(team.members || []), {
