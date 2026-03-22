@@ -295,16 +295,17 @@ const auth = {
 
     async resetPasswordWithOtp(email, code, newPassword) {
         if (window.IS_MOCK_MODE) {
-            toast.info('Mock Mode: Password reset to ' + newPassword);
             return { success: true };
         }
 
+        // Call the Edge Function which uses Admin API to reliably update the password
         const { data, error } = await supabase.functions.invoke('process-password-reset', {
-            body: { email, code, newPassword }
+            body: { email, otp_code: code, new_password: newPassword }
         });
 
-        if (error) throw error;
-        return data;
+        if (error) throw new Error(error.message || 'Failed to reset password');
+        if (data?.error) throw new Error(data.error);
+        return { success: true };
     },
 
     async deleteUserPermanently(email) {
