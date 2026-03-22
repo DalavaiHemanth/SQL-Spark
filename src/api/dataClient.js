@@ -311,8 +311,8 @@ const auth = {
             return { success: true };
         }
 
-        const { error } = await supabase.rpc('delete_user_by_email', {
-            target_email: email
+        const { error } = await supabase.rpc('admin_delete_user', {
+            target_user_email: email
         });
 
         if (error) throw error;
