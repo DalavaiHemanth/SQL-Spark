@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/api/dataClient';
 import { logger } from '@/lib/logger';
 import { loginLimiter } from '@/lib/rateLimit';
+import { isValidEmail } from '@/lib/utils'; // Assuming utils.js is in '@/lib'
 
 export default function Login({ onLoginSuccess }) {
     const { user } = useAuth();
@@ -84,6 +85,11 @@ export default function Login({ onLoginSuccess }) {
     const handleLogin = async (e) => {
         e.preventDefault();
         
+        if (!isValidEmail(loginData.email)) {
+            toast.error('Only @gmail.com and @rgmcet.edu accounts are allowed');
+            return;
+        }
+
         // Block upfront if local storage limiter says no (prevents refresh bypass)
         if (!loginLimiter.check(loginData.email)) {
             const delay = loginLimiter.getRemainingTimeSeconds(loginData.email);
@@ -120,6 +126,12 @@ export default function Login({ onLoginSuccess }) {
 
     const handleRegister = async (e) => {
         e.preventDefault();
+
+        if (!isValidEmail(registerData.email)) {
+            toast.error('Only @gmail.com and @rgmcet.edu accounts are allowed');
+            return;
+        }
+
         setIsLoading(true);
         try {
             await db.auth.register(registerData);

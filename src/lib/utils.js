@@ -6,4 +6,12 @@ export function cn(...inputs) {
 }
 
 
+export function isValidEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!regex.test(email)) return false;
+
+    const domain = email.split('@')[1].toLowerCase();
+    return domain === 'gmail.com' || domain === 'rgmcet.edu.in';
+}
+
 export const isIframe = window.self !== window.top;
