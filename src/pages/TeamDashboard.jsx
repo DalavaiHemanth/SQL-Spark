@@ -876,25 +876,47 @@ export default function TeamDashboard() {
             } catch { /* user may deny — handled by overlay */ }
         };
 
-        const handleFullscreenChange = () => {
-            if (isDisqualified) return;
+        // Track the last known fullscreen state for the poll-based exit detector
+        let lastKnownInFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+
+        const syncFullscreenState = () => {
             const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
             setIsFullscreen(inFs);
-            if (!inFs) {
-                // Just log it. The exact count is handled by the dedicated useEffect.
+            // Detect in→out transition that fullscreenchange might have missed
+            if (lastKnownInFs && !inFs && !isDisqualified) {
                 antiCheat.logFullscreenExit();
             }
+            lastKnownInFs = inFs;
+            return inFs;
+        };
+
+        const handleFullscreenChange = () => {
+            const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            setIsFullscreen(inFs);
+            if (!inFs && !isDisqualified) {
+                antiCheat.logFullscreenExit();
+            }
+            lastKnownInFs = inFs;
         };
 
         // Don't auto-re-enter if disqualified
         if (!isDisqualified) {
             enterFullscreen();
         }
-        setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
+        syncFullscreenState();
+
         const events = ['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'];
         events.forEach(e => document.addEventListener(e, handleFullscreenChange));
-        return () => events.forEach(e => document.removeEventListener(e, handleFullscreenChange));
-    }, [hackathon?.status, isTimeUp, isDisqualified]);
+
+        // Poll every second as a safety net in case fullscreenchange didn't fire
+        // (e.g. some browsers or extensions can suppress the event).
+        const pollInterval = setInterval(syncFullscreenState, 1000);
+
+        return () => {
+            events.forEach(e => document.removeEventListener(e, handleFullscreenChange));
+            clearInterval(pollInterval);
+        };
+    }, [hackathon?.status, hackathonNotStarted, isTimeUp, isDisqualified]);
 
     // Dedicated effect to handle disqualification limits and toasts
     // This avoids stale closures because it runs anytime the hook state changes
@@ -1305,6 +1327,8 @@ export default function TeamDashboard() {
                         onClick={async () => {
                             try { 
                                 const el = document.documentElement;
+                                // Suppress the blur that fires during fullscreen transition
+                                antiCheat.suppressNextBlur();
                                 if (el.requestFullscreen) await el.requestFullscreen();
                                 else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
                                 else if (el.msRequestFullscreen) await el.msRequestFullscreen();
