@@ -884,10 +884,6 @@ export default function TeamDashboard() {
             setIsFullscreen(inFs);
             if (!inFs) {
                 antiCheat.logFullscreenExit();
-                // Auto re-enter fullscreen — fullscreenchange fires as part of the
-                // user's Escape key interaction, so requestFullscreen() is allowed here.
-                antiCheat.suppressNextBlur();
-                enterFullscreen();
             }
             isInFullscreenRef.current = inFs;
         };

@@ -1339,7 +1339,9 @@ export default function AdminHackathon() {
                                                         }
                                                         sqlDb.close();
                                                     } catch (e) {
-                                                        console.warn('Could not generate expected output:', e);
+                                                        console.error('Could not generate expected output:', e);
+                                                        toast.error(`SQL Error in expected output for "${title}": ${e.message}`);
+                                                        return; // Don't save a broken challenge
                                                     }
                                                 }
 
