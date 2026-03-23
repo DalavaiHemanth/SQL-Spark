@@ -888,16 +888,35 @@ export default function TeamDashboard() {
             isInFullscreenRef.current = inFs;
         };
 
-        if (!isDisqualified) {
-            enterFullscreen();
-        }
+        // Don't auto-re-enter on load because it throws a "Must be initiated by user gesture" error.
+        // The overlay will catch that isFullscreen is false and show the button to enter.
+        
         const currentFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
         setIsFullscreen(currentFs);
         isInFullscreenRef.current = currentFs;
 
+        const syncFullscreenState = () => {
+            if (isDisqualified) return;
+            const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            setIsFullscreen(inFs);
+            
+            // Detect in->out transition safely using the ref, in case the event didn't fire
+            if (isInFullscreenRef.current && !inFs) {
+                antiCheat.logFullscreenExit();
+            }
+            isInFullscreenRef.current = inFs;
+        };
+
         const events = ['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'];
         events.forEach(e => document.addEventListener(e, handleFullscreenChange));
-        return () => events.forEach(e => document.removeEventListener(e, handleFullscreenChange));
+        
+        // Polling interval to strictly check every second as requested
+        const pollInterval = setInterval(syncFullscreenState, 1000);
+
+        return () => {
+            events.forEach(e => document.removeEventListener(e, handleFullscreenChange));
+            clearInterval(pollInterval);
+        };
     }, [hackathon?.status, isTimeUp, isDisqualified]);
 
     // Dedicated effect to handle disqualification limits and toasts
