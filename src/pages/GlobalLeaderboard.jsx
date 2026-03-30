@@ -71,8 +71,8 @@ export default function GlobalLeaderboard() {
         teams.forEach(team => {
             if (!team.members) return;
             team.members.forEach(member => {
-                const rawEmail = typeof member === 'string' ? member : member.email;
-                if (!rawEmail) return;
+                const rawEmail = (member && typeof member === 'object') ? member.email : member;
+                if (!rawEmail || typeof rawEmail !== 'string') return;
                 const email = rawEmail.toLowerCase().trim();
                 teamScoreMap.set(email, (teamScoreMap.get(email) || 0) + (team.total_score || 0));
             });
@@ -85,12 +85,12 @@ export default function GlobalLeaderboard() {
             teams.forEach(team => {
                 if (!team.members) return;
                 team.members.forEach(member => {
-                    const rawEmail = typeof member === 'string' ? member : member.email;
-                    if (!rawEmail) return;
+                    const rawEmail = (member && typeof member === 'object') ? member.email : member;
+                    if (!rawEmail || typeof rawEmail !== 'string') return;
                     const email = rawEmail.toLowerCase().trim();
                     const existing = tempMap.get(email) || { 
                         email, 
-                        username: typeof member === 'object' ? (member.name || member.full_name) : email.split('@')[0], 
+                        username: (member && typeof member === 'object') ? (member.name || member.full_name || email.split('@')[0]) : email.split('@')[0], 
                         totalScore: 0, 
                         teamsCount: 0 
                     };
@@ -105,11 +105,14 @@ export default function GlobalLeaderboard() {
         }
 
         // 3. Map active users to their scores
-        return publicUsers.map((u, index) => {
-            const email = u.email?.toLowerCase().trim();
+        return publicUsers.filter(u => u && u.email).map((u, index) => {
+            const email = u.email.toLowerCase().trim();
             const score = teamScoreMap.get(email) || 0;
             const teamsCount = teams.filter(t => 
-                t.members?.some(m => (typeof m === 'string' ? m : m.email)?.toLowerCase().trim() === email)
+                t.members?.some(m => {
+                    const mEmail = (m && typeof m === 'object') ? m.email : m;
+                    return mEmail?.toLowerCase().trim() === email;
+                })
             ).length;
 
             return {
