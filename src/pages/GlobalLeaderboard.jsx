@@ -74,6 +74,7 @@ export default function GlobalLeaderboard() {
                 const rawEmail = (member && typeof member === 'object') ? member.email : member;
                 if (!rawEmail || typeof rawEmail !== 'string') return;
                 const email = rawEmail.toLowerCase().trim();
+                if (!email) return;
                 teamScoreMap.set(email, (teamScoreMap.get(email) || 0) + (team.total_score || 0));
             });
         });
@@ -88,9 +89,10 @@ export default function GlobalLeaderboard() {
                     const rawEmail = (member && typeof member === 'object') ? member.email : member;
                     if (!rawEmail || typeof rawEmail !== 'string') return;
                     const email = rawEmail.toLowerCase().trim();
+                    if (!email) return;
                     const existing = tempMap.get(email) || { 
                         email, 
-                        username: (member && typeof member === 'object') ? (member.name || member.full_name || email.split('@')[0]) : email.split('@')[0], 
+                        username: (member && typeof member === 'object') ? (member.name || member.full_name || (email ? email.split('@')[0] : 'Unknown')) : (email ? email.split('@')[0] : 'Unknown'), 
                         totalScore: 0, 
                         teamsCount: 0 
                     };
@@ -105,19 +107,19 @@ export default function GlobalLeaderboard() {
         }
 
         // 3. Map active users to their scores
-        return publicUsers.filter(u => u && u.email).map((u, index) => {
+        return publicUsers.filter(u => u && u.email && typeof u.email === 'string').map((u, index) => {
             const email = u.email.toLowerCase().trim();
             const score = teamScoreMap.get(email) || 0;
             const teamsCount = teams.filter(t => 
-                t.members?.some(m => {
+                t && t.members?.some(m => {
                     const mEmail = (m && typeof m === 'object') ? m.email : m;
-                    return mEmail?.toLowerCase().trim() === email;
+                    return typeof mEmail === 'string' && mEmail.toLowerCase().trim() === email;
                 })
             ).length;
 
             return {
                 email,
-                username: u.full_name || email.split('@')[0],
+                username: u.full_name || (email ? email.split('@')[0] : 'Unknown'),
                 totalScore: score,
                 teamsCount,
                 avatar_style: u.avatar_style,
@@ -129,9 +131,11 @@ export default function GlobalLeaderboard() {
     }, [teams, publicUsers]);
 
     const filteredLeaderboard = useMemo(() => {
-        return leaderboardData.filter(user => 
-            user.username.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        return leaderboardData.filter(user => {
+            const username = user?.username || '';
+            const search = searchTerm || '';
+            return username.toLowerCase().includes(search.toLowerCase());
+        });
     }, [leaderboardData, searchTerm]);
 
     if (teamsLoading) {
