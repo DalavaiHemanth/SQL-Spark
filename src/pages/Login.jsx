@@ -116,7 +116,7 @@ export default function Login({ onLoginSuccess }) {
         e.preventDefault();
 
         if (!isValidEmail(loginData.email)) {
-            toast.error('Only @gmail.com and @rgmcet.edu accounts are allowed');
+            toast.error('Only @gmail.com and @rgmcet.edu.in accounts are allowed');
             return;
         }
 

@@ -62,7 +62,10 @@ export const AuthProvider = ({ children }) => {
                 setAuthError({ type: 'auth_required', message: 'Please log in' });
             }
         } catch (error) {
-            console.error('checkAuth error:', error);
+            // Only log if it's not a standard "unauthenticated" error (which is normal on first load)
+            if (error.status !== 401) {
+                console.error('checkAuth error:', error);
+            }
             setUser(null);
             setIsAuthenticated(false);
             setAuthError({ type: 'auth_required', message: 'Please log in' });

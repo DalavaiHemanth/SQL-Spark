@@ -168,7 +168,7 @@ function createEntityStore(tableName) {
 const auth = {
     async login({ email, password }) {
         if (!isValidEmail(email)) {
-            throw { status: 403, message: 'Only @gmail.com and @rgmcet.edu accounts are allowed' };
+            throw { status: 403, message: 'Only @gmail.com and @rgmcet.edu.in accounts are allowed' };
         }
         if (window.IS_MOCK_MODE) {
             // Mock admin for local dev only
@@ -204,7 +204,7 @@ const auth = {
 
     async register({ email, password, full_name, role = 'user' }) {
         if (!isValidEmail(email)) {
-            throw { status: 400, message: 'Only @gmail.com and @rgmcet.edu accounts are allowed' };
+            throw { status: 400, message: 'Only @gmail.com and @rgmcet.edu.in accounts are allowed' };
         }
         if (!registerLimiter.check(email)) {
              const remaining = registerLimiter.getRemainingTimeSeconds(email);
