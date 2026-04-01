@@ -2636,6 +2636,26 @@ export default function AdminHackathon() {
                                     </AlertDialog>
                                 </div>
 
+                                {/* Schedule Settings */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Start Time</Label>
+                                        <Input
+                                            type="datetime-local"
+                                            defaultValue={formatDatetimeLocal(hackathon.start_time)}
+                                            onBlur={(e) => updateHackathonMutation.mutate({ start_time: new Date(e.target.value).toISOString() })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Duration (Hours)</Label>
+                                        <Input
+                                            type="number"
+                                            defaultValue={hackathon.duration_hours || 24}
+                                            onBlur={(e) => updateHackathonMutation.mutate({ duration_hours: parseInt(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
                                     <Label>Max Teams</Label>
                                     <Input
@@ -2680,31 +2700,6 @@ export default function AdminHackathon() {
                                         Set to 1 for a standard single-round hackathon. Up to 10 rounds supported.
                                         After saving, go to the <strong>Rounds</strong> tab to manage each round.
                                     </p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h4 className="font-semibold text-slate-900">Publish Results</h4>
-                                                <p className="text-sm text-slate-500 mt-0.5">
-                                                    {hackathon.results_published
-                                                        ? 'Results are visible to all participants'
-                                                        : 'Results are hidden from participants'}
-                                                </p>
-                                            </div>
-                                            <Button
-                                                className={hackathon.results_published
-                                                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                                                    : 'bg-amber-600 hover:bg-amber-700'}
-                                                onClick={() => updateHackathonMutation.mutate({
-                                                    results_published: !hackathon.results_published
-                                                })}
-                                            >
-                                                {hackathon.results_published ? '✅ Published' : '📢 Publish Now'}
-                                            </Button>
-                                        </div>
-                                    </div>
                                 </div>
 
                                 {/* Publish Results */}
