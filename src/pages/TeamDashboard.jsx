@@ -95,6 +95,12 @@ export default function TeamDashboard() {
     // Timer offset for Server Synchronization to prevent local clock spoofing
     const serverTimeOffsetRef = useRef(0);
 
+    // Track which alerts/warnings have already been shown to avoid loops
+    const alertedThresholdsRef = useRef(new Set());
+    const alertedRoundThresholdsRef = useRef(new Set());
+    const lastWarnedViolationCountRef = useRef(0);
+    const hasWarnedForgivenessRef = useRef(false);
+
     // Fetch server time on mount
     useEffect(() => {
         if (window.IS_MOCK_MODE) return;
@@ -234,7 +240,14 @@ export default function TeamDashboard() {
         if (backendViols === 0 && (antiCheat.violations.length > 0 || isDisqualified || antiCheat.fullscreenExitCount > 0)) {
             antiCheat.clearAllViolations();
             setIsDisqualified(false); // remove the block screen
-            toast.success('Admin has forgiven your violations. You may resume the contest.', { duration: 10000 });
+            
+            if (!hasWarnedForgivenessRef.current) {
+                toast.success('Admin has forgiven your violations. You may resume the contest.', { duration: 10000 });
+                hasWarnedForgivenessRef.current = true;
+            }
+        } else if (backendViols > 0) {
+            // Reset for future forgiveness
+            hasWarnedForgivenessRef.current = false;
         }
     }, [team, antiCheat, antiCheat.fullscreenExitCount, isDisqualified]);
 
@@ -708,9 +721,8 @@ export default function TeamDashboard() {
 
     // --- Timer / Countdown with warnings ---
     useEffect(() => {
-        if (!hackathon?.end_time) return;
+        if (!hackathon?.end_time || hackathonNotStarted) return;
         const endTime = new Date(hackathon.end_time).getTime();
-        const warned = new Set(); // track which thresholds already fired
 
         const WARNINGS = [
             { mins: 30, msg: '⏰ 30 minutes remaining!', style: 'warning' },
@@ -725,8 +737,8 @@ export default function TeamDashboard() {
             if (diff <= 0) {
                 setTimeRemaining('00:00:00');
                 setIsTimeUp(true);
-                if (!warned.has('done')) {
-                    warned.add('done');
+                if (!alertedThresholdsRef.current.has('done')) {
+                    alertedThresholdsRef.current.add('done');
                     toast.error('⏱ Time is up! No more submissions allowed.', { duration: 10000 });
                     notificationUtils.sendNotification?.('Time is up!', { body: 'The hackathon has ended. No more submissions.' });
                 }
@@ -742,8 +754,8 @@ export default function TeamDashboard() {
             // Fire threshold warnings
             const minsLeft = Math.floor(diff / 60000);
             WARNINGS.forEach(({ mins: threshold, msg, style }) => {
-                if (minsLeft <= threshold && !warned.has(threshold)) {
-                    warned.add(threshold);
+                if (minsLeft <= threshold && !alertedThresholdsRef.current.has(threshold)) {
+                    alertedThresholdsRef.current.add(threshold);
                     if (style === 'error') {
                         toast.error(msg, { duration: 8000 });
                     } else {
@@ -778,13 +790,12 @@ export default function TeamDashboard() {
         const roundEnd = roundCfg?.end_time ? new Date(roundCfg.end_time).getTime() : null;
         const roundStart = roundCfg?.start_time ? new Date(roundCfg.start_time).getTime() : null;
 
-        if (!roundEnd) {
+        if (!roundEnd || hackathonNotStarted) {
             setRoundTimeLeft(null);
             setIsRoundTimeUp(false);
             return;
         }
 
-        const warned = new Set();
         const ROUND_WARNINGS = [
             { mins: 10, msg: `⏰ Round ${rn}: 10 minutes remaining!`, style: 'warning' },
             { mins: 5, msg: `⚠️ Round ${rn}: 5 minutes left — wrap up!`, style: 'warning' },
@@ -802,8 +813,8 @@ export default function TeamDashboard() {
             if (diff <= 0) {
                 setRoundTimeLeft('00:00:00');
                 setIsRoundTimeUp(true);
-                if (!warned.has('done')) {
-                    warned.add('done');
+                if (!alertedRoundThresholdsRef.current.has('done')) {
+                    alertedRoundThresholdsRef.current.add('done');
                     toast.error(`⏱ Round ${rn} time is up! No more submissions for this round.`, { duration: 10000 });
                 }
                 return;
@@ -817,8 +828,8 @@ export default function TeamDashboard() {
             setIsRoundTimeUp(false);
             const minsLeft = Math.floor(diff / 60000);
             ROUND_WARNINGS.forEach(({ mins: threshold, msg, style }) => {
-                if (minsLeft <= threshold && !warned.has(threshold)) {
-                    warned.add(threshold);
+                if (minsLeft <= threshold && !alertedRoundThresholdsRef.current.has(threshold)) {
+                    alertedRoundThresholdsRef.current.add(threshold);
                     if (style === 'error') toast.error(msg, { duration: 8000 });
                     else toast.warning(msg, { duration: 6000 });
                 }
@@ -924,7 +935,10 @@ export default function TeamDashboard() {
     useEffect(() => {
         const count = antiCheat.fullscreenExitCount;
         if (count === 1 && !isDisqualified) {
-            toast.error(`⚠️ WARNING: Fullscreen exited. This is violation 1/2. You will be disqualified on the 2nd exit!`, { duration: 8000 });
+            if (lastWarnedViolationCountRef.current < 1) {
+                toast.error(`⚠️ WARNING: Fullscreen exited. This is violation 1/2. You will be disqualified on the 2nd exit!`, { duration: 8000 });
+                lastWarnedViolationCountRef.current = 1;
+            }
             logger.warn('security', 'Fullscreen exited warning (1/2)', { teamId, hackathonId: hackathon?.id }, user?.email);
         } else if (count >= 2 && !isDisqualified) {
             setIsDisqualified(true);
