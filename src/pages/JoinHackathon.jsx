@@ -326,88 +326,126 @@ export default function JoinHackathon() {
                             transition={{ delay: 0.4 }}
                         >
                             <Card className="border-0 shadow-2xl rounded-[2.5rem] overflow-hidden sticky top-8">
-                                <CardHeader className="bg-slate-900 text-white p-8 pb-0">
-                                    <CardTitle className="text-2xl font-black tracking-tight mb-2">Get Started</CardTitle>
-                                    <p className="text-slate-400 text-sm font-medium">Choose your entry path</p>
-                                    <div className="h-4" />
-                                </CardHeader>
-                                <CardContent className="p-8 space-y-6">
-                                    <Tabs defaultValue="create" className="w-full">
-                                        <TabsList className="grid w-full grid-cols-2 p-1.5 bg-slate-100 rounded-2xl h-14">
-                                            <TabsTrigger value="create" className="rounded-xl font-bold text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                                Create
-                                            </TabsTrigger>
-                                            <TabsTrigger value="join" className="rounded-xl font-bold text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                                Join
-                                            </TabsTrigger>
-                                        </TabsList>
+                                {(() => {
+                                    const enrolledTeam = teams.find(t => 
+                                        t.members?.some(m => 
+                                            (typeof m === 'string' && m.toLowerCase() === user.email?.toLowerCase()) ||
+                                            (m && typeof m === 'object' && m.email?.toLowerCase() === user.email?.toLowerCase())
+                                        )
+                                    );
 
-                                        <TabsContent value="create" className="space-y-6 mt-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-widest">Team Name</Label>
-                                                <Input
-                                                    placeholder="The SQL Wizards..."
-                                                    value={teamName}
-                                                    onChange={(e) => setTeamName(e.target.value)}
-                                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all text-base font-semibold"
-                                                />
-                                            </div>
-                                            <Button
-                                                className="w-full bg-emerald-600 hover:bg-emerald-700 h-16 rounded-[1.5rem] shadow-lg shadow-emerald-500/20 text-lg font-black transition-all hover:-translate-y-1 active:translate-y-0"
-                                                onClick={() => createTeamMutation.mutate()}
-                                                disabled={!teamName.trim() || createTeamMutation.isPending || isFull}
-                                            >
-                                                {createTeamMutation.isPending ? (
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                                ) : (
-                                                    <>Create My Team <ArrowLeft className="w-5 h-5 ml-2 rotate-180" /></>
-                                                )}
-                                            </Button>
-                                            <div className="flex items-center gap-2 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                                                <UserPlus className="w-4 h-4 text-blue-500" />
-                                                <p className="text-[10px] text-blue-700 font-bold leading-tight">
-                                                    You'll be the Team Leader and get a code to share.
+                                    if (enrolledTeam) {
+                                        return (
+                                            <div className="p-8 space-y-6 text-center">
+                                                <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+                                                    <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-2xl font-black text-slate-900 mb-2">Already Enrolled!</h2>
+                                                    <p className="text-slate-500 font-medium">
+                                                        You are a member of <span className="text-emerald-600 font-bold">"{enrolledTeam.name}"</span>.
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    className="w-full bg-slate-900 hover:bg-slate-800 h-16 rounded-[1.5rem] shadow-lg shadow-slate-900/20 text-lg font-black transition-all hover:-translate-y-1"
+                                                    onClick={() => navigate(createPageUrl(`TeamDashboard?teamId=${enrolledTeam.id}`))}
+                                                >
+                                                    Go to Dashboard <ArrowLeft className="w-5 h-5 ml-2 rotate-180" />
+                                                </Button>
+                                                <p className="text-xs text-slate-400">
+                                                    You cannot register for a different team while you are already in one.
                                                 </p>
                                             </div>
-                                        </TabsContent>
+                                        );
+                                    }
 
-                                        <TabsContent value="join" className="space-y-6 mt-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-widest">Join Code</Label>
-                                                <Input
-                                                    placeholder="E.G. X7KP2Q"
-                                                    value={joinCode}
-                                                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-center text-xl font-bold tracking-widest"
-                                                    maxLength={6}
-                                                />
-                                            </div>
-                                            <Button
-                                                className="w-full bg-slate-900 hover:bg-slate-800 h-16 rounded-[1.5rem] shadow-lg shadow-slate-900/20 text-lg font-black transition-all hover:-translate-y-1 active:translate-y-0"
-                                                onClick={() => joinTeamMutation.mutate()}
-                                                disabled={joinCode.length !== 6 || joinTeamMutation.isPending}
-                                            >
-                                                {joinTeamMutation.isPending ? (
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                                ) : (
-                                                    <>Join Team <UserPlus className="w-5 h-5 ml-2" /></>
+                                    return (
+                                        <>
+                                            <CardHeader className="bg-slate-900 text-white p-8 pb-0">
+                                                <CardTitle className="text-2xl font-black tracking-tight mb-2">Get Started</CardTitle>
+                                                <p className="text-slate-400 text-sm font-medium">Choose your entry path</p>
+                                                <div className="h-4" />
+                                            </CardHeader>
+                                            <CardContent className="p-8 space-y-6">
+                                                <Tabs defaultValue="create" className="w-full">
+                                                    <TabsList className="grid w-full grid-cols-2 p-1.5 bg-slate-100 rounded-2xl h-14">
+                                                        <TabsTrigger value="create" className="rounded-xl font-bold text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                                            Create
+                                                        </TabsTrigger>
+                                                        <TabsTrigger value="join" className="rounded-xl font-bold text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                                            Join
+                                                        </TabsTrigger>
+                                                    </TabsList>
+
+                                                    <TabsContent value="create" className="space-y-6 mt-6">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-widest">Team Name</Label>
+                                                            <Input
+                                                                placeholder="The SQL Wizards..."
+                                                                value={teamName}
+                                                                onChange={(e) => setTeamName(e.target.value)}
+                                                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all text-base font-semibold"
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            className="w-full bg-emerald-600 hover:bg-emerald-700 h-16 rounded-[1.5rem] shadow-lg shadow-emerald-500/20 text-lg font-black transition-all hover:-translate-y-1 active:translate-y-0"
+                                                            onClick={() => createTeamMutation.mutate()}
+                                                            disabled={!teamName.trim() || createTeamMutation.isPending || isFull}
+                                                        >
+                                                            {createTeamMutation.isPending ? (
+                                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                            ) : (
+                                                                <>Create My Team <ArrowLeft className="w-5 h-5 ml-2 rotate-180" /></>
+                                                            )}
+                                                        </Button>
+                                                        <div className="flex items-center gap-2 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                                                            <UserPlus className="w-4 h-4 text-blue-500" />
+                                                            <p className="text-[10px] text-blue-700 font-bold leading-tight">
+                                                                You'll be the Team Leader and get a code to share.
+                                                            </p>
+                                                        </div>
+                                                    </TabsContent>
+
+                                                    <TabsContent value="join" className="space-y-6 mt-6">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-widest">Join Code</Label>
+                                                            <Input
+                                                                placeholder="E.G. X7KP2Q"
+                                                                value={joinCode}
+                                                                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                                                className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-center text-xl font-bold tracking-widest"
+                                                                maxLength={6}
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            className="w-full bg-slate-900 hover:bg-slate-800 h-16 rounded-[1.5rem] shadow-lg shadow-slate-900/20 text-lg font-black transition-all hover:-translate-y-1 active:translate-y-0"
+                                                            onClick={() => joinTeamMutation.mutate()}
+                                                            disabled={joinCode.length !== 6 || joinTeamMutation.isPending}
+                                                        >
+                                                            {joinTeamMutation.isPending ? (
+                                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                            ) : (
+                                                                <>Join Team <UserPlus className="w-5 h-5 ml-2" /></>
+                                                            )}
+                                                        </Button>
+                                                        <div className="flex items-center gap-2 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl">
+                                                            <AlertCircle className="w-4 h-4 text-amber-500" />
+                                                            <p className="text-[10px] text-amber-700 font-bold leading-tight">
+                                                                Verify your team name before joining!
+                                                            </p>
+                                                        </div>
+                                                    </TabsContent>
+                                                </Tabs>
+
+                                                {isFull && (
+                                                    <p className="text-sm text-red-500 font-bold text-center mt-4 uppercase">
+                                                        HACKATHON IS FULL! (Max {hackathon.max_teams})
+                                                    </p>
                                                 )}
-                                            </Button>
-                                            <div className="flex items-center gap-2 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl">
-                                                <AlertCircle className="w-4 h-4 text-amber-500" />
-                                                <p className="text-[10px] text-amber-700 font-bold leading-tight">
-                                                    Verify your team name before joining!
-                                                </p>
-                                            </div>
-                                        </TabsContent>
-                                    </Tabs>
-
-                                    {isFull && (
-                                        <p className="text-sm text-red-500 font-black text-center mt-4">
-                                            HACKATHON IS FULL! (Max {hackathon.max_teams})
-                                        </p>
-                                    )}
-                                </CardContent>
+                                            </CardContent>
+                                        </>
+                                    );
+                                })()}
                             </Card>
                         </motion.div>
                     </div>
