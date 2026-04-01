@@ -384,7 +384,9 @@ export default function AdminHackathon() {
             const { data, error } = await supabase
                 .from('teams')
                 .select('*')
-                .eq('hackathon_id', hackathonId);
+                .eq('hackathon_id', hackathonId)
+                .order('total_score', { ascending: false })
+                .order('name', { ascending: true });
             if (error) throw error;
             return data || [];
         },
