@@ -2637,22 +2637,81 @@ export default function AdminHackathon() {
                                 </div>
 
                                 {/* Schedule Settings */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Start Time</Label>
-                                        <Input
-                                            type="datetime-local"
-                                            defaultValue={formatDatetimeLocal(hackathon.start_time)}
-                                            onBlur={(e) => updateHackathonMutation.mutate({ start_time: new Date(e.target.value).toISOString() })}
-                                        />
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="flex items-center gap-1.5">
+                                                <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                                                Start Time
+                                            </Label>
+                                            <Input
+                                                type="datetime-local"
+                                                defaultValue={formatDatetimeLocal(hackathon.start_time)}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ start_time: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="flex items-center gap-1.5">
+                                                <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                                                End Time
+                                            </Label>
+                                            <Input
+                                                type="datetime-local"
+                                                defaultValue={formatDatetimeLocal(hackathon.end_time)}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ end_time: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                            />
+                                        </div>
                                     </div>
+
                                     <div className="space-y-2">
-                                        <Label>Duration (Hours)</Label>
-                                        <Input
-                                            type="number"
-                                            defaultValue={hackathon.duration_hours || 24}
-                                            onBlur={(e) => updateHackathonMutation.mutate({ duration_hours: parseInt(e.target.value) })}
-                                        />
+                                        <Label className="flex items-center gap-1.5 text-slate-500">
+                                            <Zap className="w-3.5 h-3.5" />
+                                            Quick Duration (Optional)
+                                        </Label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Select
+                                                defaultValue={(() => {
+                                                    if (!hackathon.start_time || !hackathon.end_time) return '';
+                                                    const mins = Math.round((new Date(hackathon.end_time) - new Date(hackathon.start_time)) / 60000);
+                                                    const opts = [30, 60, 90, 120, 180, 240, 360, 480, 720, 1440];
+                                                    return opts.includes(mins) ? String(mins) : 'custom';
+                                                })()}
+                                                onValueChange={(val) => {
+                                                    if (val === 'custom' || !val) return;
+                                                    const base = hackathon.start_time ? new Date(hackathon.start_time) : new Date();
+                                                    const endTime = new Date(base.getTime() + parseInt(val) * 60000);
+                                                    updateHackathonMutation.mutate({ end_time: endTime.toISOString() });
+                                                    toast.success(`Duration set to ${val >= 60 ? val / 60 + 'h' : val + 'm'}`);
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Pick duration…" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="30">30 minutes</SelectItem>
+                                                    <SelectItem value="60">1 hour</SelectItem>
+                                                    <SelectItem value="120">2 hours</SelectItem>
+                                                    <SelectItem value="180">3 hours</SelectItem>
+                                                    <SelectItem value="240">4 hours</SelectItem>
+                                                    <SelectItem value="360">6 hours</SelectItem>
+                                                    <SelectItem value="480">8 hours</SelectItem>
+                                                    <SelectItem value="720">12 hours</SelectItem>
+                                                    <SelectItem value="1440">24 hours</SelectItem>
+                                                    <SelectItem value="custom">Custom (use End Time field)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 rounded-md px-3 border border-dashed">
+                                                <span className="text-xs text-slate-400">Ends:</span>
+                                                <span className="font-medium text-slate-700">
+                                                    {hackathon.end_time
+                                                        ? new Date(hackathon.end_time).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
+                                                        : '—'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-slate-400">
+                                            Selecting a quick duration automatically calculates and sets the End Time based on your Start Time.
+                                        </p>
                                     </div>
                                 </div>
 
