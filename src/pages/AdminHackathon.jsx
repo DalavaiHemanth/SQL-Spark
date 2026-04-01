@@ -85,6 +85,13 @@ import AdminDbPreview from '@/components/hackathon/AdminDbPreview';
 import { useSqlJs } from '@/hooks/useSqlJs';
 import Certificate from '@/components/hackathon/Certificate'; // ADDED for preview
 
+const statusColors = {
+    draft: 'bg-slate-100 text-slate-600',
+    registration_open: 'bg-emerald-100 text-emerald-700',
+    in_progress: 'bg-blue-100 text-blue-700',
+    completed: 'bg-purple-100 text-purple-700'
+};
+
 export default function AdminHackathon() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
