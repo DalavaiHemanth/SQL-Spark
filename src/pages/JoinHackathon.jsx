@@ -19,10 +19,17 @@ import {
     Calendar,
     Clock,
     Loader2,
-    CheckCircle2
+    CheckCircle2,
+    BookOpen,
+    ShieldCheck,
+    BarChart3,
+    Zap,
+    AlertCircle,
+    Info
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 export default function JoinHackathon() {
     const navigate = useNavigate();
@@ -47,10 +54,9 @@ export default function JoinHackathon() {
         queryKey: ['teams', hackathonId],
         queryFn: () => db.entities.Team.filter({ hackathon_id: hackathonId }),
         enabled: !!hackathonId,
-        refetchInterval: 5000  // Refresh every 5s so newly-created teams appear immediately
+        refetchInterval: 5000 
     });
 
-    // Fetch challenges to show per-round counts
     const { data: challenges = [] } = useQuery({
         queryKey: ['challenges', hackathonId],
         queryFn: () => db.entities.Challenge.filter({ hackathon_id: hackathonId }),
@@ -68,15 +74,12 @@ export default function JoinHackathon() {
             if (hackathon?.max_teams && teams.length >= hackathon.max_teams) {
                 throw new Error(`Team limit reached — this hackathon allows a maximum of ${hackathon.max_teams} teams`);
             }
-            // CHECK FOR DUPLICATE TEAM NAME
             const trimmedName = teamName.trim();
             const nameExists = teams.some(t => t.name?.toLowerCase().trim() === trimmedName.toLowerCase());
-            if (nameExists) {
-                throw new Error(`The team name "${trimmedName}" is already taken in this hackathon. Please choose another.`);
-            }
+            if (nameExists) throw new Error(`The team name "${trimmedName}" is already taken.`);
 
             const joinCodeGen = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const team = await db.entities.Team.create({
+            return await db.entities.Team.create({
                 name: trimmedName,
                 hackathon_id: hackathonId,
                 join_code: joinCodeGen,
@@ -88,37 +91,28 @@ export default function JoinHackathon() {
                 total_score: 0,
                 challenges_completed: 0
             });
-            return team;
         },
         onSuccess: (team) => {
-            toast.success(`Team "${team.name}" created successfully!`);
+            toast.success(`Team "${team.name}" created!`);
             navigate(createPageUrl(`TeamDashboard?teamId=${team.id}`));
         },
-        onError: (err) => {
-            toast.error(err.message || 'Failed to create team');
-        }
+        onError: (err) => toast.error(err.message)
     });
 
     const joinTeamMutation = useMutation({
         mutationFn: async () => {
             if (getEffectiveHackathonStatus(hackathon) !== 'registration_open') {
-                throw new Error('Registration is not open for this hackathon');
+                throw new Error('Registration is forbidden');
             }
-            
-            // The RPC handles join code validation and user member addition securely
             const team = teams.find(t => t.join_code?.toUpperCase().trim() === joinCode.toUpperCase().trim());
             if (!team) throw new Error('Invalid join code');
-
-            const result = await db.entities.Team.join(team.id, joinCode);
-            return result;
+            return await db.entities.Team.join(team.id, joinCode);
         },
         onSuccess: (team) => {
-            toast.success('Joined team successfully!');
+            toast.success('Joined team!');
             navigate(createPageUrl(`TeamDashboard?teamId=${team.id}`));
         },
-        onError: (error) => {
-            toast.error(error.message || 'Failed to join team');
-        }
+        onError: (err) => toast.error(err.message)
     });
 
     if (isLoading || !user) {
@@ -131,14 +125,13 @@ export default function JoinHackathon() {
 
     if (!hackathon) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <Card className="max-w-md">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+                <Card className="max-w-md w-full">
                     <CardContent className="p-8 text-center">
-                        <h2 className="text-xl font-semibold text-slate-900 mb-2">Hackathon Not Found</h2>
-                        <p className="text-slate-500 mb-4">This hackathon doesn't exist or has been removed.</p>
-                        <Button onClick={() => navigate(createPageUrl('Home'))}>
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Home
+                        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                        <h2 className="text-xl font-bold text-slate-900 mb-2">Hackathon Not Found</h2>
+                        <Button onClick={() => navigate(createPageUrl('Home'))} className="mt-4">
+                            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
                         </Button>
                     </CardContent>
                 </Card>
@@ -146,308 +139,278 @@ export default function JoinHackathon() {
         );
     }
 
-    // Check if user already has a team in this hackathon
-    const existingTeam = teams.find(t =>
-        t.members?.some(m => m.email === user.email) ||
-        t.created_by === user.email
-    );
-
-    if (existingTeam) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-                <Card className="max-w-md w-full border-0 shadow-xl">
-                    <CardContent className="p-8 text-center">
-                        <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-                        <h2 className="text-xl font-semibold text-slate-900 mb-2">You're Already In!</h2>
-                        <p className="text-slate-500 mb-6">
-                            You're already part of team <strong>{existingTeam.name}</strong> in this hackathon.
-                        </p>
-                        <Button
-                            className="bg-emerald-600 hover:bg-emerald-700 w-full"
-                            onClick={() => navigate(createPageUrl(`TeamDashboard?teamId=${existingTeam.id}`))}
-                        >
-                            Go to Team Dashboard
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    // Block registration if not open
-    const effectiveStatus = getEffectiveHackathonStatus(hackathon);
-    if (effectiveStatus !== 'registration_open') {
-        const isCompleted = effectiveStatus === 'completed';
-        const resultsPublished = hackathon.results_published;
-
-        const statusMessages = {
-            draft: { icon: '🔒', title: 'Registration Not Open Yet', desc: 'This hackathon is still being set up. Check back later.' },
-            in_progress: { icon: '🏃', title: 'Contest Already Started', desc: 'This hackathon is currently in progress. Registration is closed.' },
-            completed: { 
-                icon: resultsPublished ? '🏆' : '🏁', 
-                title: resultsPublished ? 'Results are Out!' : 'Hackathon Ended', 
-                desc: resultsPublished 
-                    ? 'The final rankings are in. Check out who topped the leaderboard!' 
-                    : 'This hackathon has finished. We are currently finalizing the results.' 
-            },
-        };
-
-        const msg = statusMessages[effectiveStatus] || { icon: '⛔', title: 'Registration Unavailable', desc: 'Registration is not currently open.' };
-        
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-                <Card className="max-w-md w-full border-0 shadow-xl">
-                    <CardContent className="p-8 text-center">
-                        <div className="text-5xl mb-4">{msg.icon}</div>
-                        <h2 className="text-xl font-semibold text-slate-900 mb-2">{msg.title}</h2>
-                        <p className="text-slate-500 mb-6">{msg.desc}</p>
-                        
-                        <div className="space-y-3">
-                            {isCompleted && resultsPublished ? (
-                                <Button 
-                                    className="w-full bg-purple-600 hover:bg-purple-700 h-12"
-                                    onClick={() => navigate(createPageUrl(`HackathonResults?id=${hackathon.id}`))}
-                                >
-                                    <Trophy className="w-4 h-4 mr-2" />
-                                    View Final Results
-                                </Button>
-                            ) : isCompleted ? (
-                                <Button 
-                                    className="w-full bg-slate-100 text-slate-600 h-12 border-0 cursor-default hover:bg-slate-100"
-                                    disabled
-                                >
-                                    <Clock className="w-4 h-4 mr-2 text-amber-500" />
-                                    Results Pending
-                                </Button>
-                            ) : null}
-
-                            <Button variant="outline" className="w-full h-12" onClick={() => navigate(createPageUrl('Home'))}>
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                Back to Home
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    // Helper: format datetime nicely
     const fmtDt = (dt) => {
-        if (!dt) return null;
-        try { return format(new Date(dt), 'MMM d, yyyy · h:mm a'); } catch { return null; }
+        if (!dt) return 'To be announced';
+        try { return format(new Date(dt), 'MMM d, h:mm a'); } catch { return 'Invalid date'; }
     };
 
     const totalRounds = hackathon.total_rounds || 1;
-    const roundsConfig = hackathon.rounds_config || [];
     const isMultiRound = totalRounds > 1;
-
-    // Per-round challenge counts
-    const challengeCountByRound = {};
-    challenges.forEach(c => {
-        const rn = c.round_number || 1;
-        challengeCountByRound[rn] = (challengeCountByRound[rn] || 0) + 1;
-    });
-
     const isFull = hackathon?.max_teams && teams.length >= hackathon.max_teams;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-6">
-            <div className="max-w-2xl mx-auto">
-                <Button
-                    variant="ghost"
-                    className="mb-6"
-                    onClick={() => navigate(createPageUrl('Home'))}
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/20 py-10 px-4">
+            <div className="max-w-6xl mx-auto">
+                <motion.div 
+                    initial={{ opacity: 0, x: -20 }} 
+                    animate={{ opacity: 1, x: 0 }}
+                    className="mb-8"
                 >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back
-                </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate(createPageUrl('Home'))}
+                        className="text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Competitions
+                    </Button>
+                </motion.div>
 
-                {/* ── Hackathon Details Card ── */}
-                <Card className="border-0 shadow-lg mb-6">
-                    <CardContent className="p-6">
-                        <div className="flex items-start gap-4 mb-4">
-                            <div className="p-3 rounded-xl bg-emerald-100 flex-shrink-0">
-                                <Trophy className="w-8 h-8 text-emerald-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <Badge className="bg-emerald-100 text-emerald-700 border-0 mb-2">
-                                    Registration Open
-                                </Badge>
-                                <h1 className="text-2xl font-bold text-slate-900 mb-1">{hackathon.title}</h1>
-                                {hackathon.description && (
-                                    <p className="text-slate-500 text-sm leading-relaxed">{hackathon.description}</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Quick stats row */}
-                        <div className="flex flex-wrap gap-4 text-sm text-slate-500 border-t border-slate-100 pt-4 mb-4">
-                            {hackathon.start_time && (
-                                <div className="flex items-center gap-1.5">
-                                    <Calendar className="w-4 h-4 text-emerald-500" />
-                                    <span>Starts {fmtDt(hackathon.start_time)}</span>
-                                </div>
-                            )}
-                            {hackathon.end_time && (
-                                <div className="flex items-center gap-1.5">
-                                    <Clock className="w-4 h-4 text-slate-400" />
-                                    <span>Ends {fmtDt(hackathon.end_time)}</span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                                <Users className="w-4 h-4 text-violet-400" />
-                                <span>{teams.length} / {hackathon.max_teams || 50} teams registered</span>
-                            </div>
-                            {isMultiRound && (
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-blue-500">R</span>
-                                    <span>{totalRounds} Rounds</span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-amber-500">⚡</span>
-                                <span>{challenges.length} challenge{challenges.length !== 1 ? 's' : ''}</span>
-                            </div>
-                        </div>
-
-                        {/* ── Multi-Round Schedule ── */}
-                        {isMultiRound && (
-                            <div>
-                                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                                    📋 Round Schedule
-                                </h3>
-                                <div className="space-y-2">
-                                    {Array.from({ length: totalRounds }, (_, i) => {
-                                        const rn = i + 1;
-                                        const cfg = roundsConfig.find(r => r.round_number === rn) || { round_number: rn, name: `Round ${rn}`, status: 'upcoming' };
-                                        const count = challengeCountByRound[rn] || 0;
-                                        const statusColors = {
-                                            active: 'bg-emerald-50 border-emerald-200',
-                                            completed: 'bg-slate-50 border-slate-200',
-                                            upcoming: 'bg-blue-50 border-blue-100',
-                                        };
-                                        const badgeColors = {
-                                            active: 'bg-emerald-100 text-emerald-700',
-                                            completed: 'bg-slate-100 text-slate-600',
-                                            upcoming: 'bg-blue-100 text-blue-700',
-                                        };
-                                        return (
-                                            <div key={rn} className={`rounded-xl border p-3 flex items-center gap-4 ${statusColors[cfg.status] || statusColors.upcoming}`}>
-                                                <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-600 text-sm flex-shrink-0">
-                                                    {rn}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="font-semibold text-slate-800 text-sm">{cfg.name}</span>
-                                                        <Badge className={`text-[10px] border-0 ${badgeColors[cfg.status] || badgeColors.upcoming}`}>
-                                                            {cfg.status === 'active' ? '🟢 Active' : cfg.status === 'completed' ? '✅ Done' : '⏳ Upcoming'}
-                                                        </Badge>
-                                                        {cfg.qualification_score != null && cfg.status === 'completed' && (
-                                                            <span className="text-xs text-slate-500">Cutoff: <strong>{cfg.qualification_score} pts</strong></span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400 flex-wrap">
-                                                        {cfg.start_time && <span><Calendar className="w-3 h-3 inline mr-0.5" />{fmtDt(cfg.start_time)}</span>}
-                                                        {cfg.end_time && <span>→ {fmtDt(cfg.end_time)}</span>}
-                                                    </div>
-                                                </div>
-                                                <div className="text-right flex-shrink-0">
-                                                    <span className="text-xs font-semibold text-slate-600">{count}</span>
-                                                    <span className="text-xs text-slate-400 ml-1">challenge{count !== 1 ? 's' : ''}</span>
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* ── Left Column: Hackathon Details ── */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <Card className="overflow-hidden border-0 shadow-2xl bg-white/70 backdrop-blur-md">
+                                <div className="h-3 bg-gradient-to-r from-emerald-500 to-blue-500" />
+                                <CardContent className="p-8">
+                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 px-3 py-1 text-xs uppercase font-bold tracking-wider rounded-lg shadow-sm">
+                                                    Registration Open
+                                                </Badge>
+                                                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                                                    <Info className="w-3.5 h-3.5" />
+                                                    Event ID: {hackathon.id.slice(0, 8)}
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                            <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
+                                                {hackathon.title}
+                                            </h1>
+                                            <p className="text-lg text-slate-600 leading-relaxed max-w-2xl font-medium">
+                                                {hackathon.description || "The organizers haven't provided a detailed description yet, but get ready for an intense SQL challenge!"}
+                                            </p>
+                                        </div>
+                                        <div className="w-20 h-20 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-inner">
+                                            <Trophy className="w-10 h-10 text-emerald-600" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-slate-50/50 rounded-2xl border border-slate-100 shadow-inner">
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                                <Calendar className="w-3 h-3" /> Start Date
+                                            </p>
+                                            <p className="text-sm font-bold text-slate-800">{fmtDt(hackathon.start_time)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                                <Clock className="w-3 h-3" /> Duration
+                                            </p>
+                                            <p className="text-sm font-bold text-slate-800">
+                                                {hackathon.start_time && hackathon.end_time 
+                                                    ? Math.round((new Date(hackathon.end_time) - new Date(hackathon.start_time)) / 3600000) + " Hours"
+                                                    : "N/A"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                                <Users className="w-3 h-3" /> Slots
+                                            </p>
+                                            <p className="text-sm font-bold text-slate-800">{teams.length} / {hackathon.max_teams || 50} Teams</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                                <Zap className="w-3 h-3" /> Challenges
+                                            </p>
+                                            <p className="text-sm font-bold text-slate-800">{challenges.length} Total</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+
+                        <div className="grid md:grid-cols-2 gap-8">
+                            {/* Rules & Guidelines */}
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                <div className="space-y-4">
+                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                                        Rules & Guidelines
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {[
+                                            { t: "Anti-Cheat Enforcement", d: "A dedicated system monitors window switches, copy-pasting, and fullscreen exits." },
+                                            { t: "Team Integrity", d: "Maximum " + (hackathon.max_members || 4) + " members per team. Members cannot switch teams after start." },
+                                            { t: "Scoring Logic", d: "Points are awarded based on query accuracy and complexity. Ties are broken by submission time." },
+                                            { t: "Submission Limit", d: "Unlimited submissions, but only your highest score per challenge is recorded." }
+                                        ].map((rule, i) => (
+                                            <div key={i} className="group p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-emerald-200 transition-colors">
+                                                <p className="text-sm font-bold text-slate-800 mb-1 group-hover:text-emerald-700 transition-colors">{rule.t}</p>
+                                                <p className="text-xs text-slate-500 leading-relaxed">{rule.d}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            {/* Scoring Breakdown */}
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                <div className="space-y-4">
+                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <BarChart3 className="w-5 h-5 text-blue-500" />
+                                        Scoring System
+                                    </h3>
+                                    <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl" />
+                                        <div className="space-y-5 relative z-10">
+                                            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                                                <span className="text-sm text-slate-400 font-medium">Easy Challenge</span>
+                                                <span className="text-emerald-400 font-black">100 Pts</span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                                                <span className="text-sm text-slate-400 font-medium">Medium Challenge</span>
+                                                <span className="text-blue-400 font-black">250 Pts</span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                                                <span className="text-sm text-slate-400 font-medium">Hard Challenge</span>
+                                                <span className="text-purple-400 font-black">500 Pts</span>
+                                            </div>
+                                            <div className="pt-2">
+                                                <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase mb-2">Bonus Points</p>
+                                                <p className="text-xs text-slate-300 leading-relaxed">
+                                                    First blood bonuses and round-specific multipliers may apply!
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                        
+                        {/* Preparation & Info */}
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                            <div className="p-6 bg-emerald-600 rounded-[2rem] text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+                                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent)] pointer-events-none" />
+                                <div className="flex-1">
+                                    <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                        <BookOpen className="w-5 h-5 text-emerald-200" />
+                                        Ready for the challenge?
+                                    </h3>
+                                    <p className="text-emerald-50 text-sm leading-relaxed max-w-lg">
+                                        Make sure you are familiar with advanced SQL joins, window functions, and subqueries. 
+                                        All contests use actual datasets for a real-world experience.
+                                    </p>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="px-4 py-2 bg-white/10 rounded-xl border border-white/20 text-xs font-bold text-emerald-100">
+                                        Live Ranking
+                                    </div>
+                                    <div className="px-4 py-2 bg-white/10 rounded-xl border border-white/20 text-xs font-bold text-emerald-100">
+                                        Team Collab
+                                    </div>
                                 </div>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                        </motion.div>
+                    </div>
 
-                {/* Join Options */}
-                <Card className="border-0 shadow-xl">
-                    <CardHeader>
-                        <CardTitle>Join the Hackathon</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Tabs defaultValue="create" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 mb-6">
-                                <TabsTrigger value="create">
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Create Team
-                                </TabsTrigger>
-                                <TabsTrigger value="join">
-                                    <UserPlus className="w-4 h-4 mr-2" />
-                                    Join Team
-                                </TabsTrigger>
-                            </TabsList>
+                    {/* ── Right Column: Join Actions ── */}
+                    <div className="space-y-8">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.4 }}
+                        >
+                            <Card className="border-0 shadow-2xl rounded-[2.5rem] overflow-hidden sticky top-8">
+                                <CardHeader className="bg-slate-900 text-white p-8 pb-0">
+                                    <CardTitle className="text-2xl font-black tracking-tight mb-2">Get Started</CardTitle>
+                                    <p className="text-slate-400 text-sm font-medium">Choose your entry path</p>
+                                    <div className="h-4" />
+                                </CardHeader>
+                                <CardContent className="p-8 space-y-6">
+                                    <Tabs defaultValue="create" className="w-full">
+                                        <TabsList className="grid w-full grid-cols-2 p-1.5 bg-slate-100 rounded-2xl h-14">
+                                            <TabsTrigger value="create" className="rounded-xl font-bold text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                                Create
+                                            </TabsTrigger>
+                                            <TabsTrigger value="join" className="rounded-xl font-bold text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                                Join
+                                            </TabsTrigger>
+                                        </TabsList>
 
-                            <TabsContent value="create" className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="teamName">Team Name</Label>
-                                    <Input
-                                        id="teamName"
-                                        placeholder="Enter your team name"
-                                        value={teamName}
-                                        onChange={(e) => setTeamName(e.target.value)}
-                                        className="h-12"
-                                    />
-                                </div>
-                                <Button
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 h-12"
-                                    onClick={() => createTeamMutation.mutate()}
-                                    disabled={!teamName.trim() || createTeamMutation.isPending || isFull}
-                                >
-                                    {createTeamMutation.isPending ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Plus className="w-4 h-4 mr-2" />
+                                        <TabsContent value="create" className="space-y-6 mt-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-widest">Team Name</Label>
+                                                <Input
+                                                    placeholder="The SQL Wizards..."
+                                                    value={teamName}
+                                                    onChange={(e) => setTeamName(e.target.value)}
+                                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white transition-all text-base font-semibold"
+                                                />
+                                            </div>
+                                            <Button
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 h-16 rounded-[1.5rem] shadow-lg shadow-emerald-500/20 text-lg font-black transition-all hover:-translate-y-1 active:translate-y-0"
+                                                onClick={() => createTeamMutation.mutate()}
+                                                disabled={!teamName.trim() || createTeamMutation.isPending || isFull}
+                                            >
+                                                {createTeamMutation.isPending ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <>Create My Team <ArrowLeft className="w-5 h-5 ml-2 rotate-180" /></>
+                                                )}
+                                            </Button>
+                                            <div className="flex items-center gap-2 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                                                <UserPlus className="w-4 h-4 text-blue-500" />
+                                                <p className="text-[10px] text-blue-700 font-bold leading-tight">
+                                                    You'll be the Team Leader and get a code to share.
+                                                </p>
+                                            </div>
+                                        </TabsContent>
+
+                                        <TabsContent value="join" className="space-y-6 mt-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-widest">Join Code</Label>
+                                                <Input
+                                                    placeholder="E.G. X7KP2Q"
+                                                    value={joinCode}
+                                                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-center text-xl font-black tracking-widest"
+                                                    maxLength={6}
+                                                />
+                                            </div>
+                                            <Button
+                                                className="w-full bg-slate-900 hover:bg-slate-800 h-16 rounded-[1.5rem] shadow-lg shadow-slate-900/20 text-lg font-black transition-all hover:-translate-y-1 active:translate-y-0"
+                                                onClick={() => joinTeamMutation.mutate()}
+                                                disabled={joinCode.length !== 6 || joinTeamMutation.isPending}
+                                            >
+                                                {joinTeamMutation.isPending ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <>Join Team <UserPlus className="w-5 h-5 ml-2" /></>
+                                                )}
+                                            </Button>
+                                            <div className="flex items-center gap-2 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl">
+                                                <AlertCircle className="w-4 h-4 text-amber-500" />
+                                                <p className="text-[10px] text-amber-700 font-bold leading-tight">
+                                                    Verify your team name before joining!
+                                                </p>
+                                            </div>
+                                        </TabsContent>
+                                    </Tabs>
+
+                                    {isFull && (
+                                        <p className="text-sm text-red-500 font-black text-center mt-4">
+                                            HACKATHON IS FULL! (Max {hackathon.max_teams})
+                                        </p>
                                     )}
-                                    {isFull ? 'Hackathon Full' : 'Create Team'}
-                                </Button>
-                                {isFull ? (
-                                    <p className="text-xs text-red-500 font-medium text-center">
-                                        Team limit reached — maximum of {hackathon.max_teams} teams allowed.
-                                    </p>
-                                ) : (
-                                    <p className="text-xs text-slate-500 text-center">
-                                        You'll receive a join code to share with teammates
-                                    </p>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="join" className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="joinCode">Team Join Code</Label>
-                                    <Input
-                                        id="joinCode"
-                                        placeholder="Enter 6-character code"
-                                        value={joinCode}
-                                        onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                                        className="h-12 text-center text-lg font-mono tracking-widest"
-                                        maxLength={6}
-                                    />
-                                </div>
-                                <Button
-                                    className="w-full bg-slate-900 hover:bg-slate-800 h-12"
-                                    onClick={() => joinTeamMutation.mutate()}
-                                    disabled={joinCode.length !== 6 || joinTeamMutation.isPending}
-                                >
-                                    {joinTeamMutation.isPending ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <UserPlus className="w-4 h-4 mr-2" />
-                                    )}
-                                    Join Team
-                                </Button>
-                                <p className="text-xs text-slate-500 text-center">
-                                    Ask your team leader for the join code
-                                </p>
-                            </TabsContent>
-                        </Tabs>
-                    </CardContent>
-                </Card>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    </div>
+                </div>
             </div>
         </div>
     );
