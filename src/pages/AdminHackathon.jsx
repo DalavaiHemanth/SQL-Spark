@@ -719,56 +719,213 @@ export default function AdminHackathon() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-6">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate(createPageUrl('AdminDashboard'))}
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                    <div className="flex-1">
-                        <h1 className="text-2xl font-bold text-slate-900">{hackathon.title}</h1>
-                        <p className="text-slate-500">Manage challenges and view progress</p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate(createPageUrl('AdminDashboard'))}
+                            className="rounded-xl hover:bg-slate-100"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </Button>
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <h1 className="text-2xl font-bold text-slate-900">{hackathon.title}</h1>
+                                <Badge className={`${statusColors[hackathon.status]} border-0 capitalize`}>
+                                    {hackathon.status.replace('_', ' ')}
+                                </Badge>
+                            </div>
+                            <p className="text-sm text-slate-500">Event ID: <span className="font-mono text-slate-400">{hackathon.id.slice(0, 8)}</span></p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="text-center">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Teams</p>
+                            <p className="text-sm font-bold text-slate-900">{teams.length}</p>
+                        </div>
+                        <div className="w-px h-8 bg-slate-200" />
+                        <div className="text-center">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Challenges</p>
+                            <p className="text-sm font-bold text-slate-900">{challenges.length}</p>
+                        </div>
+                        <div className="w-px h-8 bg-slate-200" />
+                        <div className="text-center">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Rounds</p>
+                            <p className="text-sm font-bold text-slate-900">{hackathon.total_rounds || 1}</p>
+                        </div>
                     </div>
                 </div>
 
-                <Tabs defaultValue="challenges" className="space-y-6">
-                    <TabsList className="bg-white border flex-wrap">
-                        <TabsTrigger value="challenges">
-                            <Target className="w-4 h-4 mr-2" />
+                <Tabs defaultValue="general" className="space-y-6">
+                    <TabsList className="bg-white border p-1 rounded-2xl flex-wrap h-auto gap-1">
+                        <TabsTrigger value="general" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none">
+                            <div className="flex items-center">
+                                <Info className="w-4 h-4 mr-2 text-blue-500" />
+                                General
+                            </div>
+                        </TabsTrigger>
+                        <TabsTrigger value="challenges" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100">
+                            <Target className="w-4 h-4 mr-2 text-emerald-500" />
                             Challenges
                         </TabsTrigger>
-                        <TabsTrigger value="teams">
-                            <Users className="w-4 h-4 mr-2" />
+                        <TabsTrigger value="teams" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100">
+                            <Users className="w-4 h-4 mr-2 text-indigo-500" />
                             Teams
                         </TabsTrigger>
-                        <TabsTrigger value="leaderboard">
-                            <Trophy className="w-4 h-4 mr-2" />
+                        <TabsTrigger value="leaderboard" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100">
+                            <Trophy className="w-4 h-4 mr-2 text-amber-500" />
                             Leaderboard
                         </TabsTrigger>
                         {(hackathon.total_rounds || 1) > 1 && (
-                            <TabsTrigger value="rounds">
-                                <Layers className="w-4 h-4 mr-2" />
+                            <TabsTrigger value="rounds" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100">
+                                <Layers className="w-4 h-4 mr-2 text-purple-500" />
                                 Rounds
-                                <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 font-bold">
+                                <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-slate-200 text-slate-700 font-bold">
                                     {hackathon.total_rounds}
                                 </span>
                             </TabsTrigger>
                         )}
-                        <TabsTrigger value="database">
-                            <Database className="w-4 h-4 mr-2" />
+                        <TabsTrigger value="database" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100">
+                            <Database className="w-4 h-4 mr-2 text-cyan-500" />
                             Database
                         </TabsTrigger>
-                        <TabsTrigger value="settings">
-                            <Settings className="w-4 h-4 mr-2" />
+                        <TabsTrigger value="settings" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100">
+                            <Settings className="w-4 h-4 mr-2 text-slate-500" />
                             Settings
                         </TabsTrigger>
-                        <TabsTrigger value="activity">
-                            <Activity className="w-4 h-4 mr-2" />
+                        <TabsTrigger value="activity" className="rounded-xl px-4 py-2 data-[state=active]:bg-slate-100">
+                            <Activity className="w-4 h-4 mr-2 text-rose-500" />
                             Activity
                         </TabsTrigger>
                     </TabsList>
+
+                    {/* General Tab */}
+                    <TabsContent value="general">
+                        <div className="grid lg:grid-cols-3 gap-6">
+                            {/* Left Column: Core Identity */}
+                            <div className="lg:col-span-2 space-y-6">
+                                <Card className="border-0 shadow-lg overflow-hidden">
+                                    <CardHeader className="bg-white border-b">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Target className="w-5 h-5 text-blue-500" />
+                                            Core Identity
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6 space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-500">Hackathon Title</Label>
+                                            <Input
+                                                defaultValue={hackathon.title}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ title: e.target.value })}
+                                                placeholder="e.g. SQL Spark 2K24"
+                                                className="text-lg font-semibold h-12"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-500">Public Description</Label>
+                                            <Textarea
+                                                defaultValue={hackathon.description}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ description: e.target.value })}
+                                                placeholder="Describe the event, goals, and who should attend..."
+                                                rows={10}
+                                                className="resize-none leading-relaxed"
+                                            />
+                                            <p className="text-xs text-slate-400">This will be displayed on the Join page. Supports plain text for now.</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-0 shadow-lg">
+                                    <CardHeader className="bg-white border-b">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Trophy className="w-5 h-5 text-amber-500" />
+                                            Rewards & Recognition
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-500">Prizes & Perks</Label>
+                                            <Textarea
+                                                defaultValue={hackathon.prizes}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ prizes: e.target.value })}
+                                                placeholder="Winner: $500, Runner up: Gift Hampers..."
+                                                rows={4}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Right Column: Logistics & Schedule */}
+                            <div className="space-y-6">
+                                <Card className="border-0 shadow-lg">
+                                    <CardHeader className="bg-white border-b">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Clock className="w-5 h-5 text-emerald-500" />
+                                            Logistics
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6 space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-500">Organizer Details</Label>
+                                            <Input
+                                                defaultValue={hackathon.organizer_details}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ organizer_details: e.target.value })}
+                                                placeholder="e.g. Department of CSE"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-500">College / Venue</Label>
+                                            <Input
+                                                defaultValue={hackathon.college_details}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ college_details: e.target.value })}
+                                                placeholder="e.g. RGMCET Nandyal"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-500">Event Timings</Label>
+                                            <Input
+                                                defaultValue={hackathon.timings_description}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ timings_description: e.target.value })}
+                                                placeholder="e.g. 9:00 AM - 4:00 PM"
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-0 shadow-lg bg-slate-900 text-white">
+                                    <CardHeader className="border-b border-white/10">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Calendar className="w-5 h-5 text-blue-400" />
+                                            Primary Schedule
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6 space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-400">Start Time</Label>
+                                            <Input
+                                                type="datetime-local"
+                                                className="bg-white/5 border-white/10 text-white h-12"
+                                                defaultValue={formatDatetimeLocal(hackathon.start_time)}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ start_time: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-400">Registration Deadline</Label>
+                                            <Input
+                                                type="datetime-local"
+                                                className="bg-white/5 border-white/10 text-white h-12"
+                                                defaultValue={formatDatetimeLocal(hackathon.registration_deadline)}
+                                                onBlur={(e) => updateHackathonMutation.mutate({ registration_deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
+                    </TabsContent>
 
                     {/* Challenges Tab */}
                     <TabsContent value="challenges">
@@ -2517,60 +2674,27 @@ export default function AdminHackathon() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-1"><Clock className="w-3 h-3" /> Start Time</Label>
-                                        <Input
-                                            type="datetime-local"
-                                            defaultValue={formatDatetimeLocal(hackathon.start_time)}
-                                            onBlur={(e) => updateHackathonMutation.mutate({ start_time: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-1"><Clock className="w-3 h-3" /> Duration</Label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <Select
-                                                defaultValue={(() => {
-                                                    if (!hackathon.start_time || !hackathon.end_time) return '';
-                                                    const mins = Math.round((new Date(hackathon.end_time) - new Date(hackathon.start_time)) / 60000);
-                                                    const opts = [30, 60, 90, 120, 180, 240, 360];
-                                                    return opts.includes(mins) ? String(mins) : 'custom';
-                                                })()}
-                                                onValueChange={(val) => {
-                                                    if (val === 'custom' || !val) return;
-                                                    const base = hackathon.start_time ? new Date(hackathon.start_time) : new Date();
-                                                    const endTime = new Date(base.getTime() + parseInt(val) * 60000);
-                                                    updateHackathonMutation.mutate({ end_time: endTime.toISOString() });
-                                                    toast.success(`Contest duration set to ${val >= 60 ? val / 60 + 'h' : val + 'm'}`);
-                                                }}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Pick duration…" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="30">30 minutes</SelectItem>
-                                                    <SelectItem value="60">1 hour</SelectItem>
-                                                    <SelectItem value="90">1.5 hours</SelectItem>
-                                                    <SelectItem value="120">2 hours</SelectItem>
-                                                    <SelectItem value="180">3 hours</SelectItem>
-                                                    <SelectItem value="240">4 hours</SelectItem>
-                                                    <SelectItem value="360">6 hours</SelectItem>
-                                                    <SelectItem value="custom">Custom end time</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-
-                                            <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 rounded-md px-3 border">
-                                                <span className="text-xs text-slate-400">Ends:</span>
-                                                <span className="font-medium text-slate-700">
-                                                    {hackathon.end_time
-                                                        ? new Date(hackathon.end_time).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
-                                                        : '—'}
-                                                </span>
+                                    <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="font-semibold text-slate-900">Publish Results</h4>
+                                                <p className="text-sm text-slate-500 mt-0.5">
+                                                    {hackathon.results_published
+                                                        ? 'Results are visible to all participants'
+                                                        : 'Results are hidden from participants'}
+                                                </p>
                                             </div>
+                                            <Button
+                                                className={hackathon.results_published
+                                                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                                                    : 'bg-amber-600 hover:bg-amber-700'}
+                                                onClick={() => updateHackathonMutation.mutate({
+                                                    results_published: !hackathon.results_published
+                                                })}
+                                            >
+                                                {hackathon.results_published ? '✅ Published' : '📢 Publish Now'}
+                                            </Button>
                                         </div>
-                                        <p className="text-xs text-slate-400">
-                                            Duration is calculated from start time. Submissions are automatically blocked when time runs out.
-                                        </p>
                                     </div>
                                 </div>
 

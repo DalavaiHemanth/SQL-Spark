@@ -187,11 +187,11 @@ export default function JoinHackathon() {
                                                     Event ID: {hackathon.id.slice(0, 8)}
                                                 </div>
                                             </div>
-                                            <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
+                                            <h1 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight leading-tight">
                                                 {hackathon.title}
                                             </h1>
-                                            <p className="text-lg text-slate-600 leading-relaxed max-w-2xl font-medium">
-                                                {hackathon.description || "The organizers haven't provided a detailed description yet, but get ready for an intense SQL challenge!"}
+                                            <p className="text-base text-slate-600 leading-relaxed max-w-2xl font-medium">
+                                                {hackathon.description}
                                             </p>
                                         </div>
                                         <div className="w-20 h-20 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-inner">
@@ -201,32 +201,32 @@ export default function JoinHackathon() {
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-slate-50/50 rounded-2xl border border-slate-100 shadow-inner">
                                         <div>
-                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                            <p className="text-[11px] text-slate-400 uppercase font-bold tracking-widest mb-1.5 flex items-center gap-1.5">
                                                 <Calendar className="w-3 h-3" /> Start Date
                                             </p>
-                                            <p className="text-sm font-bold text-slate-800">{fmtDt(hackathon.start_time)}</p>
+                                            <p className="text-sm font-semibold text-slate-800">{fmtDt(hackathon.start_time)}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                            <p className="text-[11px] text-slate-400 uppercase font-bold tracking-widest mb-1.5 flex items-center gap-1.5">
                                                 <Clock className="w-3 h-3" /> Duration
                                             </p>
-                                            <p className="text-sm font-bold text-slate-800">
+                                            <p className="text-sm font-semibold text-slate-800">
                                                 {hackathon.start_time && hackathon.end_time 
                                                     ? Math.round((new Date(hackathon.end_time) - new Date(hackathon.start_time)) / 3600000) + " Hours"
                                                     : "N/A"}
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                            <p className="text-[11px] text-slate-400 uppercase font-bold tracking-widest mb-1.5 flex items-center gap-1.5">
                                                 <Users className="w-3 h-3" /> Slots
                                             </p>
-                                            <p className="text-sm font-bold text-slate-800">{teams.length} / {hackathon.max_teams || 50} Teams</p>
+                                            <p className="text-sm font-semibold text-slate-800">{teams.length} / {hackathon.max_teams || 50} Teams</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5">
+                                            <p className="text-[11px] text-slate-400 uppercase font-bold tracking-widest mb-1.5 flex items-center gap-1.5">
                                                 <Zap className="w-3 h-3" /> Challenges
                                             </p>
-                                            <p className="text-sm font-bold text-slate-800">{challenges.length} Total</p>
+                                            <p className="text-sm font-semibold text-slate-800">{challenges.length} Total</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -243,78 +243,79 @@ export default function JoinHackathon() {
                                     </h3>
                                     <div className="space-y-3">
                                         {[
-                                            { t: "Anti-Cheat Enforcement", d: "A dedicated system monitors window switches, copy-pasting, and fullscreen exits." },
-                                            { t: "Team Integrity", d: "Maximum " + (hackathon.max_members || 4) + " members per team. Members cannot switch teams after start." },
-                                            { t: "Scoring Logic", d: "Points are awarded based on query accuracy and complexity. Ties are broken by submission time." },
-                                            { t: "Submission Limit", d: "Unlimited submissions, but only your highest score per challenge is recorded." }
+                                            "Participants must use only SQL to solve problems.",
+                                            "External help or plagiarism is strictly prohibited.",
+                                            "Each submission will be automatically evaluated.",
+                                            "Leaderboard rankings are based on: Accuracy, Query performance, and Time efficiency.",
+                                            "Decisions by organizers will be final."
                                         ].map((rule, i) => (
-                                            <div key={i} className="group p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-emerald-200 transition-colors">
-                                                <p className="text-sm font-bold text-slate-800 mb-1 group-hover:text-emerald-700 transition-colors">{rule.t}</p>
-                                                <p className="text-xs text-slate-500 leading-relaxed">{rule.d}</p>
+                                            <div key={i} className="flex gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                                                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                                                    {i + 1}
+                                                </div>
+                                                <p className="text-sm text-slate-600 leading-tight">{rule}</p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </motion.div>
 
-                            {/* Scoring Breakdown */}
+                            {/* Logistics & Prizes */}
                             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                                <div className="space-y-4">
-                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                        <BarChart3 className="w-5 h-5 text-blue-500" />
-                                        Scoring System
-                                    </h3>
-                                    <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl" />
-                                        <div className="space-y-5 relative z-10">
-                                            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                                                <span className="text-sm text-slate-400 font-medium">Easy Challenge</span>
-                                                <span className="text-emerald-400 font-black">100 Pts</span>
+                                <div className="space-y-6">
+                                    {/* Prizes */}
+                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl" />
+                                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                            <Trophy className="w-5 h-5 text-amber-400" />
+                                            Rewards & Prizes
+                                        </h3>
+                                        <div className="space-y-4 relative z-10">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl">🥇</div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white">Winner</p>
+                                                    <p className="text-xs text-slate-400">{hackathon.prizes || "Cash Prize + Excellence Certificate"}</p>
+                                                </div>
                                             </div>
-                                            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                                                <span className="text-sm text-slate-400 font-medium">Medium Challenge</span>
-                                                <span className="text-blue-400 font-black">250 Pts</span>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl">🥈</div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white">Runner Up</p>
+                                                    <p className="text-xs text-slate-400">Merit Certificate + Special Gifts</p>
+                                                </div>
                                             </div>
-                                            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                                                <span className="text-sm text-slate-400 font-medium">Hard Challenge</span>
-                                                <span className="text-purple-400 font-black">500 Pts</span>
+                                            <div className="pt-2 flex items-center gap-2 text-xs text-emerald-400 font-medium">
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                Certificates for all valid participants
                                             </div>
-                                            <div className="pt-2">
-                                                <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase mb-2">Bonus Points</p>
-                                                <p className="text-xs text-slate-300 leading-relaxed">
-                                                    First blood bonuses and round-specific multipliers may apply!
-                                                </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Logistics Card */}
+                                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-lg space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">College</p>
+                                                <p className="text-sm font-semibold text-slate-800">{hackathon.college_details || "RGMCET Nandyal"}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Organized By</p>
+                                                <p className="text-sm font-semibold text-slate-800">{hackathon.organizer_details || "Department of CSE"}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Timings</p>
+                                                <p className="text-sm font-semibold text-slate-800">{hackathon.timings_description || "9:30 AM - 12:30 PM"}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Deadlines</p>
+                                                <p className="text-sm font-semibold text-emerald-600">Register by {fmtDt(hackathon.start_time)}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </motion.div>
                         </div>
-                        
-                        {/* Preparation & Info */}
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                            <div className="p-6 bg-emerald-600 rounded-[2rem] text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
-                                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent)] pointer-events-none" />
-                                <div className="flex-1">
-                                    <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-                                        <BookOpen className="w-5 h-5 text-emerald-200" />
-                                        Ready for the challenge?
-                                    </h3>
-                                    <p className="text-emerald-50 text-sm leading-relaxed max-w-lg">
-                                        Make sure you are familiar with advanced SQL joins, window functions, and subqueries. 
-                                        All contests use actual datasets for a real-world experience.
-                                    </p>
-                                </div>
-                                <div className="flex gap-4">
-                                    <div className="px-4 py-2 bg-white/10 rounded-xl border border-white/20 text-xs font-bold text-emerald-100">
-                                        Live Ranking
-                                    </div>
-                                    <div className="px-4 py-2 bg-white/10 rounded-xl border border-white/20 text-xs font-bold text-emerald-100">
-                                        Team Collab
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
                     </div>
 
                     {/* ── Right Column: Join Actions ── */}
@@ -377,7 +378,7 @@ export default function JoinHackathon() {
                                                     placeholder="E.G. X7KP2Q"
                                                     value={joinCode}
                                                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-center text-xl font-black tracking-widest"
+                                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 focus:bg-white text-center text-xl font-bold tracking-widest"
                                                     maxLength={6}
                                                 />
                                             </div>
