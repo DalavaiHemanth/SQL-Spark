@@ -160,6 +160,46 @@ function createEntityStore(tableName) {
                 logger.error('api', `Delete failed on ${tableName}`, { error: error.message, id });
                 throw error;
             }
+        },
+
+        // NEW: Specialized method for joining a team via RPC (bypasses RLS bottleneck for non-members)
+        async join(teamId, joinCode) {
+            if (!apiLimiter.check('write')) {
+                throw new Error('429: Too many requests. Please slow down.');
+            }
+            if (window.IS_MOCK_MODE) {
+                const teams = getLocalData();
+                const index = teams.findIndex(t => t.id === teamId);
+                if (index === -1) throw new Error('Team not found');
+                
+                const team = teams[index];
+                if (team.join_code?.toUpperCase() !== joinCode.toUpperCase()) {
+                    throw new Error('Invalid join code');
+                }
+
+                // Mock user from session
+                const session = JSON.parse(localStorage.getItem('sqlspark_session') || '{}');
+                const updatedMembers = [...(team.members || []), {
+                    email: session.email,
+                    name: session.full_name,
+                    role: 'member'
+                }];
+                
+                teams[index] = { ...team, members: updatedMembers };
+                setLocalData(teams);
+                return teams[index];
+            }
+
+            const { data, error } = await supabase.rpc('join_team', {
+                p_team_id: teamId,
+                p_join_code: joinCode
+            });
+
+            if (error) {
+                logger.error('api', 'Join team RPC failed', { error: error.message, teamId });
+                throw error;
+            }
+            return data;
         }
     };
 }

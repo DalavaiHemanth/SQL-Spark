@@ -104,17 +104,13 @@ export default function JoinHackathon() {
             if (getEffectiveHackathonStatus(hackathon) !== 'registration_open') {
                 throw new Error('Registration is not open for this hackathon');
             }
+            
+            // The RPC handles join code validation and user member addition securely
             const team = teams.find(t => t.join_code?.toUpperCase().trim() === joinCode.toUpperCase().trim());
             if (!team) throw new Error('Invalid join code');
 
-            const updatedMembers = [...(team.members || []), {
-                email: user.email,
-                name: user.full_name,
-                role: 'member'
-            }];
-
-            await db.entities.Team.update(team.id, { members: updatedMembers });
-            return team;
+            const result = await db.entities.Team.join(team.id, joinCode);
+            return result;
         },
         onSuccess: (team) => {
             toast.success('Joined team successfully!');
