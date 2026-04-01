@@ -76,8 +76,7 @@ import {
     EyeOff,
     Check,
     ChevronRight,
-    Flag,
-    Layers
+    Flag
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
