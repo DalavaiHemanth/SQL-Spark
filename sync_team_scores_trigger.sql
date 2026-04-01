@@ -8,13 +8,18 @@ returns trigger as $$
 begin
     -- Update the team's total score and completed challenges count
     -- based on 'correct' submissions only.
+    -- Points for each challenge are only counted once (the highest score achieved).
     update teams
     set 
         total_score = (
-            select coalesce(sum(score), 0)
-            from submissions
-            where team_id = coalesce(new.team_id, old.team_id)
-            and status = 'correct'
+            select coalesce(sum(sub.max_score), 0)
+            from (
+                select max(score) as max_score
+                from submissions
+                where team_id = coalesce(new.team_id, old.team_id)
+                and status = 'correct'
+                group by challenge_id
+            ) sub
         ),
         challenges_completed = (
             select count(distinct challenge_id)
@@ -36,14 +41,18 @@ after insert or update or delete on submissions
 for each row
 execute function sync_team_stats();
 
--- 3. Initial sync (Optional but recommended to fix any existing drift)
+-- 3. Initial sync to fix any existing duplicate points
 update teams t
 set 
     total_score = (
-        select coalesce(sum(score), 0)
-        from submissions
-        where team_id = t.id
-        and status = 'correct'
+        select coalesce(sum(sub.max_score), 0)
+        from (
+            select max(score) as max_score
+            from submissions
+            where team_id = t.id
+            and status = 'correct'
+            group by challenge_id
+        ) sub
     ),
     challenges_completed = (
         select count(distinct challenge_id)
