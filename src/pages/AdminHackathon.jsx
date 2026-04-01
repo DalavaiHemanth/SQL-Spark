@@ -1611,8 +1611,12 @@ export default function AdminHackathon() {
                                                             {team.member_scores && Object.keys(team.member_scores).length > 0 && (
                                                                 <div className="flex flex-wrap gap-2 mt-3">
                                                                     {Object.entries(team.member_scores).map(([email, score]) => {
-                                                                        // Try to lookup the member's display name from the team.members array
-                                                                        const memberName = team.members?.find(m => m.email === email)?.name || email.split('@')[0];
+                                                                        // Member might be a string (email) or an object {email, name}
+                                                                        const member = team.members?.find(m => 
+                                                                            (typeof m === 'string' && m === email) || 
+                                                                            (m && typeof m === 'object' && m.email === email)
+                                                                        );
+                                                                        const memberName = (member && typeof member === 'object' ? member.name : null) || email.split('@')[0];
                                                                         return (
                                                                             <Badge key={email} variant="secondary" className="text-xs bg-slate-100 text-slate-600 border border-slate-200">
                                                                                 <span className="font-medium mr-1">{memberName}:</span> 
