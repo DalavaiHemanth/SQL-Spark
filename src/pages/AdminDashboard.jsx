@@ -185,15 +185,19 @@ export default function AdminDashboard() {
 
             // Generate a row for each participant
             team.members.forEach(member => {
-                const individualScore = team.member_scores?.[member.email] || 0;
+                const isObject = member && typeof member === 'object';
+                const email = isObject ? member.email : member;
+                const name = isObject ? (member.name || email.split('@')[0]) : email.split('@')[0];
+                const individualScore = team.member_scores?.[email] || 0;
+                
                 rows.push([
                     rank,
                     `"${team.name}"`,
                     team.status || 'active',
                     team.total_score || 0,
                     team.challenges_completed || 0,
-                    `"${member.name || member.email.split('@')[0]}"`,
-                    member.email,
+                    `"${name}"`,
+                    email,
                     individualScore,
                     tabSwitches,
                     pastes,

@@ -163,7 +163,11 @@ export default function HackathonResults() {
         const headers = ['Rank', 'Team Name', 'Score', 'Challenges Solved', 'Submissions', 'Violations', 'Members'];
         const rows = rankedTeams.map((team, i) => {
             const stats = getTeamStats(team);
-            const members = team.members?.map(m => m.name || m.email).join('; ') || '';
+            const members = team.members?.map(m => {
+                if (typeof m === 'string') return m.split('@')[0];
+                if (m && typeof m === 'object') return m.name || m.email?.split('@')[0] || 'Unknown';
+                return 'Unknown';
+            }).join('; ') || '';
             return [i + 1, team.name, team.total_score || 0, `${stats.solved}/${challenges.length}`, stats.submissions, stats.totalViolations, members];
         });
         const csv = [headers, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n');
