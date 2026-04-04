@@ -128,7 +128,7 @@ export default function TeamDashboard() {
             const teams = await db.entities.Team.filter({ id: teamId });
             return teams[0];
         },
-        refetchInterval: 10000, // Sync team status changes every 10s
+        refetchInterval: 30000, // Reduced frequency for performance
         enabled: !!teamId
     });
 
@@ -139,7 +139,7 @@ export default function TeamDashboard() {
             const h = hackathons[0];
             return h;
         },
-        refetchInterval: 10000, // Sync hackathon status changes (like results_published) every 10s
+        refetchInterval: 60000, // Rarely changes, increased interval
         enabled: !!team?.hackathon_id
     });
 
@@ -435,9 +435,13 @@ export default function TeamDashboard() {
     });
 
     // REAL-TIME LEADERBOARD: Subscribe to changes in teams table for this hackathon
+    // Optimized: Use debounced invalidation to prevent thundering herd effect
     useEffect(() => {
         if (!team?.hackathon_id || window.IS_MOCK_MODE) return;
 
+        // Use a simple debounce to avoid hitting the DB 10 times if 10 people submit at once
+        let debounceTimer;
+        
         const channel = supabase
             .channel(`hackathon-teams-${team.hackathon_id}`)
             .on(
@@ -449,18 +453,22 @@ export default function TeamDashboard() {
                     filter: `hackathon_id=eq.${team.hackathon_id}`
                 },
                 (payload) => {
-                    // Invalidate the teams list to trigger a refresh
-                    queryClient.invalidateQueries(['all-teams', team.hackathon_id]);
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        // Invalidate the teams list to trigger a refresh
+                        queryClient.invalidateQueries(['all-teams', team.hackathon_id]);
 
-                    // Also invalidate the current team if it was the one modified
-                    if (payload.new && payload.new.id === teamId) {
-                        queryClient.invalidateQueries(['team', teamId]);
-                    }
+                        // Also invalidate the current team if it was the one modified
+                        if (payload.new && payload.new.id === teamId) {
+                            queryClient.invalidateQueries(['team', teamId]);
+                        }
+                    }, 2000); // 2 second buffer
                 }
             )
             .subscribe();
 
         return () => {
+            clearTimeout(debounceTimer);
             supabase.removeChannel(channel);
         };
     }, [team?.hackathon_id, teamId, queryClient]);

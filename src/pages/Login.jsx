@@ -138,16 +138,23 @@ export default function Login({ onLoginSuccess }) {
             if (onLoginSuccess) onLoginSuccess();
             else window.location.reload();
         } catch (err) {
-            const msg = err.message || 'Invalid email or password';
+            let msg = err.message || 'Invalid email or password';
+            
+            // Special handling for concurrent login rate limits
+            if (err.status === 429) {
+                msg = 'Too many people are logging in right now from this network. Please wait 60 seconds and try again.';
+                setLockoutUntil(Date.now() + 60000);
+            }
+            
             setLoginError(msg);
 
             const remaining = loginLimiter.getRemainingTimeSeconds(loginData.email);
-            if (remaining > 0) {
+            if (remaining > 0 && err.status !== 429) {
                 setLockoutUntil(Date.now() + remaining * 1000);
                 logger.warn('abuse', 'Brute force login lockout triggered', { email: loginData.email }, loginData.email);
                 toast.error(`Too many failed attempts. Login locked for ${remaining} seconds.`);
             } else {
-                toast.error(msg);
+                toast.error(msg, { duration: 6000 });
             }
         } finally {
             setIsLoading(false);

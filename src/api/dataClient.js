@@ -196,10 +196,41 @@ function createEntityStore(tableName) {
             });
 
             if (error) {
+                // Handle concurrent join errors gracefully
+                if (error.message?.includes('429') || error.code === '429') {
+                    throw new Error('Too many participants joining at once. Please wait 10 seconds and try again.');
+                }
                 logger.error('api', 'Join team RPC failed', { error: error.message, teamId });
                 throw error;
             }
             return data;
+        }
+    };
+}
+
+// Specialized Team Store to handle normalization
+function createTeamStore() {
+    const base = createEntityStore('teams');
+    return {
+        ...base,
+        async create(data) {
+            // 1. Create the team row
+            const team = await base.create(data);
+            
+            // 2. Also insert creator into team_members table (if not in mock mode)
+            if (!window.IS_MOCK_MODE && team && data.created_by) {
+                try {
+                    await supabase.from('team_members').insert({
+                        team_id: team.id,
+                        email: data.created_by,
+                        full_name: data.created_by_name || 'Team Creator',
+                        role: 'organizer'
+                    });
+                } catch (err) {
+                    logger.warn('api', 'Failed to auto-insert creator into team_members', { error: err.message });
+                }
+            }
+            return team;
         }
     };
 }
@@ -228,6 +259,10 @@ const auth = {
         }
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
+            // Handle rate limits (429) gracefully
+            if (error.status === 429) {
+                throw { status: 429, message: 'Too many login attempts. Please wait 60 seconds.' };
+            }
             logger.warn('auth', 'Failed login attempt', { error: error.message }, email);
             throw { status: 401, message: error.message };
         }
@@ -435,7 +470,7 @@ export const db = {
     entities: {
         Hackathon: createEntityStore('hackathons'),
         Challenge: createEntityStore('challenges'),
-        Team: createEntityStore('teams'),
+        Team: createTeamStore(),
         Submission: createEntityStore('submissions'),
     },
 };
