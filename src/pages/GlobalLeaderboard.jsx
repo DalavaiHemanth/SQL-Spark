@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { db } from '@/api/dataClient';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/api/supabaseClient';
@@ -58,44 +57,34 @@ const RANK_COLORS = {
 export default function GlobalLeaderboard() {
     const { user: currentUser } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
-    const queryClient = useQueryClient();
 
-    // Subscribe to realtime updates for teams table
-    React.useEffect(() => {
-        const channel = supabase
-            .channel('leaderboard-updates')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'teams'
-                },
-                (payload) => {
-                    console.log('Realtime change received:', payload);
-                    queryClient.invalidateQueries({ queryKey: ['all-teams-global'] });
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [queryClient]);
-
+    // Fetch only required columns — no realtime WebSocket (saves 60 connections for 60 users)
+    // Polls every 60s instead, which is much cheaper
     const { data: teams = [], isLoading: teamsLoading } = useQuery({
         queryKey: ['all-teams-global'],
-        queryFn: () => db.entities.Team.list()
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('teams')
+                .select('id,hackathon_id,members,total_score,challenges_completed');
+            if (error) return [];
+            return data;
+        },
+        staleTime: 60_000,       // Cache 60s — all 60 users share 1 fetch
+        gcTime: 120_000,
+        refetchInterval: 60_000, // Poll every 60s instead of WebSocket
     });
 
-    // Fetch current user details (names/avatars) from Supabase to ensure leaderboard is up to date
+    // Fetch user display names — cached aggressively since names rarely change
     const { data: publicUsers = [] } = useQuery({
         queryKey: ['public-users'],
         queryFn: async () => {
             const { data, error } = await supabase.rpc('get_public_leaderboard_users');
             if (error) return [];
             return data;
-        }
+        },
+        staleTime: 120_000,      // Cache 2 min — names don't change during hackathon
+        gcTime: 300_000,
+        refetchInterval: 120_000,
     });
 
     const leaderboardData = useMemo(() => {
