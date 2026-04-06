@@ -20,6 +20,22 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
+// Local avatar — zero external HTTP requests
+const AVATAR_COLORS = [
+    ['#10b981', '#fff'], ['#3b82f6', '#fff'], ['#8b5cf6', '#fff'],
+    ['#f59e0b', '#fff'], ['#ef4444', '#fff'], ['#06b6d4', '#fff'],
+    ['#ec4899', '#fff'], ['#84cc16', '#fff'],
+];
+function LocalAvatar({ name, className = '' }) {
+    const seed = (name || '?').trim();
+    const initials = seed.split(/\s+/).map(w => w[0]?.toUpperCase() || '').slice(0, 2).join('') || seed[0]?.toUpperCase() || '?';
+    const [bg, fg] = AVATAR_COLORS[seed.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_COLORS.length];
+    return (
+        <div className={`flex items-center justify-center font-bold select-none rounded-xl ${className}`}
+            style={{ background: bg, color: fg, fontSize: '1.1rem' }}>{initials}</div>
+    );
+}
+
 export default function Dashboard() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
@@ -109,12 +125,8 @@ export default function Dashboard() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-6">
             <div className="max-w-6xl mx-auto">
                 <div className="mb-8 flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="w-20 h-20 rounded-2xl bg-white shadow-sm border border-slate-100 p-1">
-                        <img 
-                            src={`https://api.dicebear.com/7.x/${user.avatar_style || 'initials'}/svg?seed=${encodeURIComponent(user.avatar_seed || user.email)}`} 
-                            alt="Profile" 
-                            className="w-full h-full rounded-xl object-cover"
-                        />
+                    <div className="w-20 h-20">
+                        <LocalAvatar name={user.full_name || user.email} className="w-20 h-20" />
                     </div>
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900 mb-1">

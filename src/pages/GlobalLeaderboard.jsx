@@ -16,6 +16,39 @@ import { motion } from 'framer-motion';
 import { getTier } from '@/utils/ranking';
 import { useAuth } from '@/lib/AuthContext';
 
+// Local avatar — zero external HTTP requests, instant render
+const AVATAR_COLORS = [
+    ['#10b981', '#065f46'], // emerald
+    ['#3b82f6', '#1e3a8a'], // blue
+    ['#8b5cf6', '#4c1d95'], // violet
+    ['#f59e0b', '#78350f'], // amber
+    ['#ef4444', '#7f1d1d'], // red
+    ['#06b6d4', '#164e63'], // cyan
+    ['#ec4899', '#831843'], // pink
+    ['#84cc16', '#365314'], // lime
+];
+
+function LocalAvatar({ name, className = '' }) {
+    const seed = (name || '?').trim();
+    const initials = seed
+        .split(/\s+/)
+        .map(w => w[0]?.toUpperCase() || '')
+        .slice(0, 2)
+        .join('') || seed[0]?.toUpperCase() || '?';
+    // Deterministic color from name
+    const colorIndex = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % AVATAR_COLORS.length;
+    const [bg, text] = AVATAR_COLORS[colorIndex];
+    return (
+        <div
+            className={`flex items-center justify-center font-bold select-none rounded-lg ${className}`}
+            style={{ background: bg, color: text, fontSize: '0.75rem' }}
+            title={name}
+        >
+            {initials}
+        </div>
+    );
+}
+
 const RANK_COLORS = {
     0: 'text-yellow-500 bg-yellow-50 border-yellow-200',
     1: 'text-slate-400 bg-slate-50 border-slate-200',
@@ -248,16 +281,7 @@ export default function GlobalLeaderboard() {
                                                     </td>
                                                     <td className="px-6 py-4 font-semibold">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden">
-                                                            <img 
-                                                                src={user.avatar_style && user.avatar_seed 
-                                                                    ? `https://api.dicebear.com/7.x/${user.avatar_style}/svg?seed=${encodeURIComponent(user.avatar_seed)}`
-                                                                    : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.username)}`
-                                                                }
-                                                                alt={user.username}
-                                                                className="w-full h-full"
-                                                            />
-                                                        </div>
+                                                            <LocalAvatar name={user.username} className="w-9 h-9" />
                                                             <div className="flex flex-col">
                                                                 <span className={`font-semibold transition-colors ${isMe ? 'text-emerald-900' : 'text-slate-700 group-hover:text-emerald-600'}`}>
                                                                     {user.username}
