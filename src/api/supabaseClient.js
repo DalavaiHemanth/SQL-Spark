@@ -36,7 +36,28 @@ if (!supabaseUrl || !supabaseAnonKey) {
     };
 } else {
     window.IS_MOCK_MODE = false;
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
+    supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+            // Persist session in localStorage so users stay logged in
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+        },
+        db: {
+            // Use 'public' schema explicitly (helps pooler routing)
+            schema: 'public',
+        },
+        global: {
+            // Prevent connections from lingering open
+            fetch: (url, options = {}) => fetch(url, { ...options, keepalive: false }),
+        },
+        realtime: {
+            // Limit realtime channels — each channel = 1 websocket connection
+            params: {
+                eventsPerSecond: 2,
+            },
+        },
+    });
 }
 
 export { supabase };
