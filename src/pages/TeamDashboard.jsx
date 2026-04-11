@@ -89,6 +89,8 @@ export default function TeamDashboard() {
     const [isInInterRound, setIsInInterRound] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [timerId, setTimerId] = useState(null);
+    // Debounce ref for violation sync — prevents spamming Supabase on every keystroke/event
+    const violationSyncTimer = useRef(null);
     const [showNavWarning, setShowNavWarning] = useState(false);
     const [isDisqualified, setIsDisqualified] = useState(false);
 
@@ -179,11 +181,14 @@ export default function TeamDashboard() {
         notificationUtils.requestPermission();
     }, []);
 
-    // Periodically sync violations to Supabase so admin can see them live
+    // Debounced violation sync — waits 10s after last change before writing to Supabase.
+    // This prevents hundreds of DB writes when multiple violations fire in rapid succession
+    // (e.g. fullscreen exit + tab switch + paste all at once = 1 write instead of 3).
     useEffect(() => {
         if (!teamId || window.IS_MOCK_MODE) return;
 
-        const syncViolations = async () => {
+        clearTimeout(violationSyncTimer.current);
+        violationSyncTimer.current = setTimeout(async () => {
             const summary = antiCheat.getViolationSummary();
             // Optimistically update the query cache so local Admin Forgive checks do not race
             queryClient.setQueryData(['team', teamId], old => old ? { ...old, violations: summary } : old);
@@ -192,10 +197,9 @@ export default function TeamDashboard() {
                 .from('teams')
                 .update({ violations: summary })
                 .eq('id', teamId);
-        };
+        }, 10_000); // 10s debounce — reduces writes from ~300/min to ~18/min for 30 users
 
-        // Sync immediately on any violation change
-        syncViolations();
+        return () => clearTimeout(violationSyncTimer.current);
     }, [
         antiCheat.violations.length,
         antiCheat.tabSwitchCount,
@@ -425,13 +429,17 @@ export default function TeamDashboard() {
     const { data: submissions = [] } = useQuery({
         queryKey: ['submissions', teamId],
         queryFn: () => db.entities.Submission.filter({ team_id: teamId }),
-        enabled: !!teamId
+        enabled: !!teamId,
+        staleTime: 15_000,       // Cache 15s — submissions don't change that rapidly
+        refetchInterval: 15_000, // Poll every 15s instead of re-fetching on every render
     });
 
     const { data: allTeams = [] } = useQuery({
         queryKey: ['all-teams', team?.hackathon_id],
         queryFn: () => db.entities.Team.filter({ hackathon_id: team.hackathon_id }),
-        enabled: !!team?.hackathon_id
+        enabled: !!team?.hackathon_id,
+        staleTime: 30_000,       // Cache 30s — leaderboard updates are not real-time critical
+        refetchInterval: 30_000, // Poll every 30s; WebSocket channel handles instant score changes
     });
 
     // REAL-TIME LEADERBOARD: Subscribe to changes in teams table for this hackathon
