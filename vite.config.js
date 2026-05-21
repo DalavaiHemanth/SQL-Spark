@@ -3,7 +3,10 @@ import path from 'path'
 import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
+// base: '/' works if you use a custom domain or root GitLab Pages.
+// If deployed at https://username.gitlab.io/SQL-Spark/ change base to '/SQL-Spark/'
 export default defineConfig({
+    base: '/',
     plugins: [
         react(),
     ],
