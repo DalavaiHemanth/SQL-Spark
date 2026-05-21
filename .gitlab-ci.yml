@@ -2,9 +2,9 @@ stages:
   - build
   - deploy
 
-# ──────────────────────────────────────────
-# BUILD STAGE — install deps & run vite build
-# ──────────────────────────────────────────
+# ─────────────────────────────────────────
+# BUILD — Install dependencies & Vite build
+# ─────────────────────────────────────────
 build:
   stage: build
   image: node:20-alpine
@@ -15,11 +15,10 @@ build:
     paths:
       - node_modules/
   variables:
-    # Inject your Supabase secrets from GitLab CI/CD Variables
     VITE_SUPABASE_URL: $VITE_SUPABASE_URL
     VITE_SUPABASE_ANON_KEY: $VITE_SUPABASE_ANON_KEY
   script:
-    - npm ci --prefer-offline
+    - npm ci
     - npm run build
   artifacts:
     paths:
@@ -28,16 +27,15 @@ build:
   only:
     - main
 
-# ──────────────────────────────────────────
-# DEPLOY STAGE — publish dist/ to GitLab Pages
-# ──────────────────────────────────────────
+# ─────────────────────────────────────────
+# DEPLOY — Publish to GitLab Pages
+# ─────────────────────────────────────────
 pages:
   stage: deploy
   image: alpine:latest
   dependencies:
     - build
   script:
-    # GitLab Pages serves from a folder named "public"
     - mv dist public
   artifacts:
     paths:
